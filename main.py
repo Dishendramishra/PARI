@@ -3,17 +3,83 @@ from PySide2.QtCore import *
 from PySide2.QtGui import *
 import tess_api 
 import simbad_api
-import threading
 from subprocess import Popen, PIPE, STDOUT
 
-
-
-import sys
+import traceback, sys
 
 import ctypes
 myappid = u'mycompany.myproduct.subproduct.version' # arbitrary string
 ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
 
+
+
+class WorkerSignals(QObject):
+    '''
+    Defines the signals available from a running worker thread.
+
+    Supported signals are:
+
+    finished
+        No data
+    
+    error
+        `tuple` (exctype, value, traceback.format_exc() )
+    
+    result
+        `object` data returned from processing, anything
+
+    '''
+    finished = Signal()  # QtCore.Signal
+    error = Signal(tuple)
+    result = Signal(object)
+
+class Worker(QRunnable):
+    '''
+    Worker thread
+
+    Inherits from QRunnable to handler worker thread setup, signals and wrap-up.
+
+    :param callback: The function callback to run on this worker thread. Supplied args and 
+                     kwargs will be passed through to the runner.
+    :type callback: function
+    :param args: Arguments to pass to the callback function
+    :param kwargs: Keywords to pass to the callback function
+
+    '''
+
+    def __init__(self, fn, *args, **kwargs):
+        super(Worker, self).__init__()
+        # Store constructor arguments (re-used for processing)
+        self.fn = fn
+        self.args = args
+        self.kwargs = kwargs
+        self.signals = WorkerSignals()
+
+
+    @Slot()  # QtCore.Slot
+    def run(self):
+        '''
+        Initialise the runner function with passed args, kwargs.
+        '''
+
+        # Retrieve args/kwargs here; and fire processing using them
+        try:
+            result = self.fn( 
+                        *self.args, 
+                        **self.kwargs)
+                        # status=self.signals.status,
+                        # progress=self.signals.progress)
+        except:
+            traceback.print_exc()
+            exctype, value = sys.exc_info()[:2]
+            self.signals.error.emit((exctype, value, traceback.format_exc()))
+
+        else:
+            self.signals.result.emit(result)  # Return the result of the processing
+
+        finally:
+            self.signals.finished.emit()  # Done
+            
 class POC(QWidget):
 
     def __init__(self):
@@ -30,6 +96,8 @@ class POC(QWidget):
         vbox.addWidget(self.grp_box_source,2,0)
         vbox.setColumnStretch(1,1)
         
+        self.threadpool = QThreadPool()
+        print("Multithreading with maximum %d threads" % self.threadpool.maxThreadCount())
 
         self.setLayout(vbox)
         # self.logger_window()
@@ -45,30 +113,36 @@ class POC(QWidget):
         # self.tray.setIcon(appIcon)
         # self.tray.setVisible(True)
 
-    def ds9(self):
-        self.ds9 = Popen("", stdin=PIPE, stdout=PIPE, stderr=STDOUT)
+    def spawn_thread(self,fn_name,fn_result_handler):
+        worker = Worker(fn_name)
+        worker.signals.result.connect(fn_result_handler)
+        self.threadpool.start(worker)
 
 
     def get_src_info(self):
-        
-        def get_info(name):
-            name = name.replace(" ","")
-            name = name.lower()
+        name = self.source_name.text()
+        name = name.replace(" ","")
+        name = name.lower()
 
-            if name[:3] == "toi":
-                info = tess_api.get_planet_data([name])
-            elif name[:2] == "hd":
-                info = simbad_api.get_planet_data([name])
+        info = "None"
+        if name[:3] == "toi":
+            info = tess_api.get_planet_data([name])
+        elif name[:2] == "hd":
+            info = simbad_api.get_planet_data([name])
+        else:
+            return None
 
-            print(info)
+        print(info)
+        return info
+
+    def set_src_info(self, info):
+        if info == None:
             self.source_info.clear()
-            self.source_info.textCursor().insertHtml("RA: "+info[0][1]+"<br>")
-            self.source_info.textCursor().insertHtml("Dec: "+info[0][2]+"<br>")
-        
-        # thread = threading.Thread(target=get_info,args=(self.source_name.text(),))
-        # thread.setDaemon(True)
-        # thread.start()
-        get_info(self.source_name.text())
+            self.source_info.textCursor().insertHtml("Invalid Source Name! <br>")
+            return None
+        self.source_info.clear()
+        self.source_info.textCursor().insertHtml("RA: "+info[0][1]+"<br>")
+        self.source_info.textCursor().insertHtml("Dec: "+info[0][2]+"<br>")
 
     def creategui(self):
 
@@ -80,18 +154,17 @@ class POC(QWidget):
 
         # self.actns_layout.setAlignment(AlignTop)
         self.btn_ctrl_rst = QPushButton( self)
-        self.btn_ctrl_rst.setIcon(QIcon("ResetCtlr.gif"))
+        self.btn_ctrl_rst.setIcon(QIcon("icons/ResetCtlr.gif"))
         self.btn_ctrl_rst.setIconSize(QSize(40,40))
         self.actns_layout.addWidget(self.btn_ctrl_rst)
         
-
         self.btn_poweron = QPushButton(self)
-        self.btn_poweron.setIcon(QIcon("PowerOn.gif"))
+        self.btn_poweron.setIcon(QIcon("icons/PowerOn.gif"))
         self.btn_poweron.setIconSize(QSize(40,40))
         self.actns_layout.addWidget(self.btn_poweron)
 
         self.btn_poweroff = QPushButton(self)
-        self.btn_poweroff.setIcon(QIcon("PowerOff.gif"))
+        self.btn_poweroff.setIcon(QIcon("icons/PowerOff.gif"))
         self.btn_poweroff.setIconSize(QSize(40,40))
         self.actns_layout.addWidget(self.btn_poweroff)
 
@@ -127,8 +200,6 @@ class POC(QWidget):
         self.gridLayout_exp.addWidget(self.chk_btn_exp_multi,2,0)
         self.gridLayout_exp.addWidget(self.input_exp_multi,2,1)
 
-
-
         self.grp_box_exp.setLayout(self.gridLayout_exp)
 
 
@@ -157,7 +228,7 @@ class POC(QWidget):
         
         self.source_btn = QPushButton(self,text="submit")
         self.gridLayout_source.addWidget(self.source_btn,1,0,1,2)
-        self.source_btn.clicked.connect(self.get_src_info)
+        self.source_btn.clicked.connect(lambda: self.spawn_thread(self.get_src_info, self.set_src_info))
 
         self.source_info = QTextEdit(self)
         self.source_info.setReadOnly(True)
