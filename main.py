@@ -3,15 +3,12 @@ from PySide2.QtCore import *
 from PySide2.QtGui import *
 import tess_api 
 import simbad_api
-from subprocess import Popen, PIPE, STDOUT
 
 import traceback, sys
 
 import ctypes
 myappid = u'mycompany.myproduct.subproduct.version' # arbitrary string
 ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
-
-
 
 class WorkerSignals(QObject):
     '''
