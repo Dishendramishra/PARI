@@ -1,0 +1,6 @@
+pyside2
+astroquery
+bs4
+julian
+termcolor
+colorama
