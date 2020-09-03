@@ -6,9 +6,17 @@ import simbad_api
 
 import traceback, sys
 
-import ctypes
-myappid = u'mycompany.myproduct.subproduct.version' # arbitrary string
-ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+if sys.platform == "linux" or sys.platform == "linux2":
+    pass
+
+elif sys.platform == "win32":
+    import ctypes
+    myappid = u'mycompany.myproduct.subproduct.version' # arbitrary string
+    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+
+elif sys.platform == "darwin":
+    pass
+
 
 class WorkerSignals(QObject):
     '''
@@ -237,7 +245,9 @@ class POC(QWidget):
         self.logger = QMainWindow()
         self.logger.show()
 
-app = QApplication(sys.argv)
-window = POC()
-app.exec_()
-sys.exit()
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    window = POC()
+    app.setWindowIcon(QIcon("icons/prl.png"))
+    app.exec_()
+    sys.exit()
