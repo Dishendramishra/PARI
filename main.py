@@ -3,6 +3,8 @@ from PySide2.QtCore import *
 from PySide2.QtGui import *
 import tess_api 
 import simbad_api
+from subprocess import Popen, PIPE, STDOUT
+
 
 import traceback, sys
 
@@ -123,6 +125,19 @@ class POC(QWidget):
         worker.signals.result.connect(fn_result_handler)
         self.threadpool.start(worker)
 
+    def expose_handler(self):
+        cmd = ["api/arcapi.exe"]
+
+        if self.chk_btn_exp_time.isChecked():
+            cmd.append("-e")
+            cmd.append(self.input_exp_time.text())
+
+        print(cmd)
+        self.spawn_thread(self.expose(" ".join(cmd)),None)
+
+
+    def expose(self,cmd):
+        process = Popen(cmd, stdin=PIPE, stdout=PIPE, stderr=STDOUT)
 
     def get_src_info(self):
         name = self.source_name.text()
@@ -190,20 +205,31 @@ class POC(QWidget):
         self.chk_btn_exp_time = QCheckBox("Exp. Time",self)
         self.input_exp_time = QLineEdit(self)
         self.input_exp_time.setDisabled(True)
+        self.chk_btn_exp_time.clicked.connect(
+            lambda : self.input_exp_time.setDisabled(not self.chk_btn_exp_time.isChecked()))
         self.gridLayout_exp.addWidget(self.chk_btn_exp_time,0,0)
         self.gridLayout_exp.addWidget(self.input_exp_time,0,1)
 
         self.chk_btn_exp_delay = QCheckBox("Delay Exposure(sec)",self)
         self.input_exp_delay = QLineEdit(self)
         self.input_exp_delay.setDisabled(True)
+        self.chk_btn_exp_delay.clicked.connect(
+            lambda : self.input_exp_delay.setDisabled(not self.chk_btn_exp_delay.isChecked()))
         self.gridLayout_exp.addWidget(self.chk_btn_exp_delay,1,0)
         self.gridLayout_exp.addWidget(self.input_exp_delay,1,1)
 
         self.chk_btn_exp_multi = QCheckBox("Multiple Exposure",self)
         self.input_exp_multi = QLineEdit(self)
         self.input_exp_multi.setDisabled(True)
+        self.chk_btn_exp_multi.clicked.connect(
+            lambda : self.input_exp_multi.setDisabled(not self.chk_btn_exp_multi.isChecked()))
         self.gridLayout_exp.addWidget(self.chk_btn_exp_multi,2,0)
         self.gridLayout_exp.addWidget(self.input_exp_multi,2,1)
+
+        self.btn_expose = QPushButton(self,text="EXPOSE")
+        self.btn_expose.setStyleSheet("color: red; font: bold")
+        self.gridLayout_exp.addWidget(self.btn_expose,3,1)
+        self.btn_expose.clicked.connect(self.expose_handler)
 
         self.grp_box_exp.setLayout(self.gridLayout_exp)
 
