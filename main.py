@@ -171,7 +171,7 @@ class POC(QWidget):
     #   ARC API functions 
     # ==============================================================
     def owl(self, progress_callback):
-        self.arc = ArcWrapper("C:\\Users\\ryzen5\\Desktop\\POC\\api\\arcapi.exe PCIe")
+        self.arc = ArcWrapper("api\\arcapi.exe PCIe")
 
         for line in self.arc.process.stdout:
             line = line.decode("utf-8")
