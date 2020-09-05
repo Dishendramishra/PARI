@@ -19,6 +19,32 @@ elif sys.platform == "win32":
 elif sys.platform == "darwin":
     pass
 
+class ArcWrapper():
+    def __init__(self,cmd):
+        
+        cmd = cmd.split()
+        self.process = Popen(cmd, stdin=PIPE, stdout=PIPE, stderr=STDOUT)
+
+    def write_stdin(self,cmd):
+        print(colored("grive: ","blue"),end="")
+        print(colored(cmd,"red"))
+        cmd = cmd+"\n"
+        self.process.stdin.write(cmd.encode())
+        self.process.stdin.flush()
+
+    def read_stdout(self, break_flag=None):
+        text  = []
+        for line in self.process.stdout:
+            line = line.decode("utf-8")
+            text.append(line)
+
+            if break_flag and line.startswith(break_flag):
+                break
+
+        return text        
+
+    def kill(self):
+        self.process.kill()
 
 class WorkerSignals(QObject):
     '''
@@ -39,6 +65,7 @@ class WorkerSignals(QObject):
     finished = Signal()  # QtCore.Signal
     error = Signal(tuple)
     result = Signal(object)
+    progress = Signal(str)
 
 class Worker(QRunnable):
     '''
@@ -61,6 +88,8 @@ class Worker(QRunnable):
         self.args = args
         self.kwargs = kwargs
         self.signals = WorkerSignals()
+
+        self.kwargs['progress_callback'] = self.signals.progress
 
 
     @Slot()  # QtCore.Slot
@@ -120,26 +149,53 @@ class POC(QWidget):
         # self.tray.setIcon(appIcon)
         # self.tray.setVisible(True)
 
-    def spawn_thread(self,fn_name,fn_result_handler):
+    def spawn_thread(self, fn_name, fn_progress, fn_result_handler):
+        
+        if fn_name.__name__ == "owl":
+            self.btn_expose.setDisabled(True)
+
+        if fn_name.__name__ == "get_src_info":
+            self.source_info.clear()
+            self.source_info.insertHtml("Getting details ....")
+
         worker = Worker(fn_name)
-        worker.signals.result.connect(fn_result_handler)
+
+        if fn_result_handler:
+            worker.signals.result.connect(fn_result_handler)
+        if fn_progress:
+            worker.signals.progress.connect(fn_progress)
+        
         self.threadpool.start(worker)
 
-    def expose_handler(self):
-        cmd = ["api/arcapi.exe"]
+    # ==============================================================
+    #   ARC API functions 
+    # ==============================================================
+    def owl(self, progress_callback):
+        self.arc = ArcWrapper("C:\\Users\\ryzen5\\Desktop\\POC\\api\\arcapi.exe PCIe")
 
-        if self.chk_btn_exp_time.isChecked():
-            cmd.append("-e")
-            cmd.append(self.input_exp_time.text())
+        for line in self.arc.process.stdout:
+            line = line.decode("utf-8")
+            if line.startswith("Error") or line.startswith("( CArcPCIe"):
+                progress_callback.emit(line)
+                break
+            progress_callback.emit(line)
 
-        print(cmd)
-        self.spawn_thread(self.expose(" ".join(cmd)),None)
+        # progress_callback.emit(self.arc.read_stdout())
+
+    def owl_progress(self,n):
+        print(n)
+
+    def owl_done(self):
+        print("owl thread completed!")
+        self.btn_expose.setDisabled(False)
+    # ==============================================================
 
 
-    def expose(self,cmd):
-        process = Popen(cmd, stdin=PIPE, stdout=PIPE, stderr=STDOUT)
+    # ==============================================================
+    #   Source API functions 
+    # ==============================================================
 
-    def get_src_info(self):
+    def get_src_info(self, progress_callback):
         name = self.source_name.text()
         name = name.replace(" ","")
         name = name.lower()
@@ -163,6 +219,8 @@ class POC(QWidget):
         self.source_info.clear()
         self.source_info.textCursor().insertHtml("RA: "+info[0][1]+"<br>")
         self.source_info.textCursor().insertHtml("Dec: "+info[0][2]+"<br>")
+    # ==============================================================
+
 
     def creategui(self):
 
@@ -229,7 +287,7 @@ class POC(QWidget):
         self.btn_expose = QPushButton(self,text="EXPOSE")
         self.btn_expose.setStyleSheet("color: red; font: bold")
         self.gridLayout_exp.addWidget(self.btn_expose,3,1)
-        self.btn_expose.clicked.connect(self.expose_handler)
+        self.btn_expose.clicked.connect(lambda: self.spawn_thread(self.owl, self.owl_progress, self.owl_done))
 
         self.grp_box_exp.setLayout(self.gridLayout_exp)
 
@@ -259,7 +317,7 @@ class POC(QWidget):
         
         self.source_btn = QPushButton(self,text="submit")
         self.gridLayout_source.addWidget(self.source_btn,1,0,1,2)
-        self.source_btn.clicked.connect(lambda: self.spawn_thread(self.get_src_info, self.set_src_info))
+        self.source_btn.clicked.connect(lambda: self.spawn_thread(self.get_src_info, None, self.set_src_info))
 
         self.source_info = QTextEdit(self)
         self.source_info.setReadOnly(True)
