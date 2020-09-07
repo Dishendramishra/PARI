@@ -4,7 +4,7 @@ from PySide2.QtGui import *
 import tess_api 
 import simbad_api
 from subprocess import Popen, PIPE, STDOUT
-
+from time import sleep
 
 import traceback, sys
 
@@ -153,7 +153,7 @@ class POC(QWidget):
 
     def spawn_thread(self, fn_name, fn_progress, fn_result_handler):
         
-        if fn_name.__name__ == "owl_thread":
+        if fn_name.__name__ == "expose_thread":
             self.btn_expose.setDisabled(True)
 
         if fn_name.__name__ == "get_src_info":
@@ -172,24 +172,37 @@ class POC(QWidget):
     # ==============================================================
     #   ARC API functions 
     # ==============================================================
-    def owl_handler(self):
+
+    #  Exposure Functions
+    # -----------------------------------------------------------
+    def expose_handler(self):
 
         cmd = "api\\arcapi.exe PCIe -f api\\tim.lod -d 4 -c 6000 -r 6000"
 
         if self.chk_btn_exp_time.checkState():
             cmd += " -e " + self.input_exp_time.text()
             
-        self.spawn_thread(self.owl_thread(cmd), self.owl_progress, self.owl_done)
+        self.spawn_thread(self.expose_thread(cmd), self.expose_progress, self.expose_done)
 
-    def owl_thread(self, progress_callback):
+    def expose_thread(self, progress_callback):
+        self.progressbar_exp.setValue(0)
         cmd = "api\\arcapi.exe PCIe -f api\\tim.lod -d 4 -c 6000 -r 6000"
 
-        if self.chk_btn_exp_time.checkState():
+        exp_time = 0 
+        exp_time_flag = self.chk_btn_exp_time.checkState()
+        if exp_time_flag:
             cmd += " -e " + self.input_exp_time.text()
+            exp_time = int(self.input_exp_time.text())
         
         print(cmd)
 
         self.arc = ArcWrapper(cmd)
+
+        if exp_time_flag:
+            for i in range(exp_time):
+                self.progressbar_exp_label.setText("Exposure: "+str(i+1))
+                sleep(1)
+        self.progressbar_exp_label.setText("")
 
         for line in self.arc.process.stdout:
             line = line.decode("utf-8")
@@ -200,18 +213,33 @@ class POC(QWidget):
 
         # progress_callback.emit(self.arc.read_stdout())
 
-    def owl_progress(self,line):
+    def expose_progress(self,line):
         if line.startswith("Pixel Count:"):
             self.line_count += 1
             self.progressbar_exp.setValue(self.line_count/9)
-            # print(line, end=" ")
+            print(line, end=" ")
             # print(self.line_count)
 
-    def owl_done(self):
+    def expose_done(self):
         print("owl thread completed!")
         self.progressbar_exp.setValue(100)
         self.btn_expose.setDisabled(False)
         self.line_count = 0
+
+    # -----------------------------------------------------------
+
+    def power_off_controller(self):
+        arc = ArcWrapper("api\\arcapi.exe PCIe poweroff")
+        self.txt_logger.textCursor().insertHtml("Power Off Controller Done!<br>")
+    
+    def power_on_controller(self):
+        arc = ArcWrapper("api\\arcapi.exe PCIe poweron")
+        self.txt_logger.textCursor().insertHtml("Power On Controller Done!<br>")
+
+    def reset_controller(self):
+        arc = ArcWrapper("api\\arcapi.exe PCIe reset")
+        self.txt_logger.textCursor().insertHtml("Reset Controller Done!<br>")
+
     # ==============================================================
 
 
@@ -259,16 +287,19 @@ class POC(QWidget):
         self.btn_ctrl_rst.setIcon(QIcon("icons/ResetCtlr.gif"))
         self.btn_ctrl_rst.setIconSize(QSize(40,40))
         self.actns_layout.addWidget(self.btn_ctrl_rst)
+        self.btn_ctrl_rst.clicked.connect(self.reset_controller)
         
         self.btn_poweron = QPushButton(self)
         self.btn_poweron.setIcon(QIcon("icons/PowerOn.gif"))
         self.btn_poweron.setIconSize(QSize(40,40))
         self.actns_layout.addWidget(self.btn_poweron)
+        self.btn_poweron.clicked.connect(self.power_on_controller)
 
         self.btn_poweroff = QPushButton(self)
         self.btn_poweroff.setIcon(QIcon("icons/PowerOff.gif"))
         self.btn_poweroff.setIconSize(QSize(40,40))
         self.actns_layout.addWidget(self.btn_poweroff)
+        self.btn_poweroff.clicked.connect(self.power_off_controller)
 
         self.btn_ds9 = QPushButton(self)
         self.btn_ds9.setIcon(QIcon("icons/ds9.png"))
@@ -311,14 +342,17 @@ class POC(QWidget):
         self.btn_expose = QPushButton(self,text="EXPOSE")
         self.btn_expose.setStyleSheet("color: red; font: bold")
         self.gridLayout_exp.addWidget(self.btn_expose,3,1)
-        self.btn_expose.clicked.connect(lambda: self.spawn_thread(self.owl_thread, self.owl_progress, self.owl_done))
-        # self.btn_expose.clicked.connect(self.owl_handler)
+        self.btn_expose.clicked.connect(lambda: self.spawn_thread(self.expose_thread, self.expose_progress, self.expose_done))
+        # self.btn_expose.clicked.connect(self.expose_handler)
 
         self.progressbar_exp = QProgressBar()
         self.progressbar_exp.setMinimum(0)
         self.progressbar_exp.setMaximum(100)
         self.progressbar_exp.setValue(0)
         self.gridLayout_exp.addWidget(self.progressbar_exp,4,0,1,2)
+
+        self.progressbar_exp_label = QLabel("",self)
+        self.gridLayout_exp.addWidget(self.progressbar_exp_label,4,1)
 
         self.grp_box_exp.setLayout(self.gridLayout_exp)
 
