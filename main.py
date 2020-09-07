@@ -121,6 +121,8 @@ class POC(QWidget):
     def __init__(self):
         super().__init__()
 
+        self.line_count = 0
+
         self.setWindowTitle("POC")
         self.setGeometry(300,200,500,350)
         self.setIcon()
@@ -151,7 +153,7 @@ class POC(QWidget):
 
     def spawn_thread(self, fn_name, fn_progress, fn_result_handler):
         
-        if fn_name.__name__ == "owl":
+        if fn_name.__name__ == "owl_thread":
             self.btn_expose.setDisabled(True)
 
         if fn_name.__name__ == "get_src_info":
@@ -166,12 +168,28 @@ class POC(QWidget):
             worker.signals.progress.connect(fn_progress)
         
         self.threadpool.start(worker)
-
+  
     # ==============================================================
     #   ARC API functions 
     # ==============================================================
-    def owl(self, progress_callback):
-        self.arc = ArcWrapper("api\\arcapi.exe PCIe")
+    def owl_handler(self):
+
+        cmd = "api\\arcapi.exe PCIe -f api\\tim.lod -d 4 -c 6000 -r 6000"
+
+        if self.chk_btn_exp_time.checkState():
+            cmd += " -e " + self.input_exp_time.text()
+            
+        self.spawn_thread(self.owl_thread(cmd), self.owl_progress, self.owl_done)
+
+    def owl_thread(self, progress_callback):
+        cmd = "api\\arcapi.exe PCIe -f api\\tim.lod -d 4 -c 6000 -r 6000"
+
+        if self.chk_btn_exp_time.checkState():
+            cmd += " -e " + self.input_exp_time.text()
+        
+        print(cmd)
+
+        self.arc = ArcWrapper(cmd)
 
         for line in self.arc.process.stdout:
             line = line.decode("utf-8")
@@ -182,12 +200,18 @@ class POC(QWidget):
 
         # progress_callback.emit(self.arc.read_stdout())
 
-    def owl_progress(self,n):
-        print(n)
+    def owl_progress(self,line):
+        if line.startswith("Pixel Count:"):
+            self.line_count += 1
+            self.progressbar_exp.setValue(self.line_count/9)
+            # print(line, end=" ")
+            # print(self.line_count)
 
     def owl_done(self):
         print("owl thread completed!")
+        self.progressbar_exp.setValue(100)
         self.btn_expose.setDisabled(False)
+        self.line_count = 0
     # ==============================================================
 
 
@@ -287,7 +311,14 @@ class POC(QWidget):
         self.btn_expose = QPushButton(self,text="EXPOSE")
         self.btn_expose.setStyleSheet("color: red; font: bold")
         self.gridLayout_exp.addWidget(self.btn_expose,3,1)
-        self.btn_expose.clicked.connect(lambda: self.spawn_thread(self.owl, self.owl_progress, self.owl_done))
+        self.btn_expose.clicked.connect(lambda: self.spawn_thread(self.owl_thread, self.owl_progress, self.owl_done))
+        # self.btn_expose.clicked.connect(self.owl_handler)
+
+        self.progressbar_exp = QProgressBar()
+        self.progressbar_exp.setMinimum(0)
+        self.progressbar_exp.setMaximum(100)
+        self.progressbar_exp.setValue(0)
+        self.gridLayout_exp.addWidget(self.progressbar_exp,4,0,1,2)
 
         self.grp_box_exp.setLayout(self.gridLayout_exp)
 
