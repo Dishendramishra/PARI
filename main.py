@@ -124,22 +124,45 @@ class POC(QWidget):
 
         self.line_count = 0
 
+        self.setMinimumWidth(700)
+        # ===============================================================================
+        #   Dummy Widgets for filling space
+        # ===============================================================================
+        self.dummy_txt = QTextEdit(self)
+        self.dummy_txt.setStyleSheet("border: 0px;")
+        self.dummy_txt.setDisabled(True)
+
+        self.dummy_line = QLineEdit(self)
+        self.dummy_line.setStyleSheet("border: 0px; background:transparent")
+        self.dummy_line.setDisabled(True)
+        # ===============================================================================
+
         self.setWindowTitle("POC")
         self.setGeometry(300,200,500,350)
         self.setIcon()
         self.creategui()
-        vbox = QGridLayout()
-        vbox.addWidget(self.grp_box_actns,0,0)
-        vbox.addWidget(self.grp_box_exp,1,0)
-        vbox.addWidget(self.grp_box_img_file_ops,2,0)
-        vbox.addWidget(self.grp_box_source,3,0)
-        vbox.addWidget(self.grp_box_logger,0,1,3,1)
-        vbox.setColumnStretch(1,1)
+
+
+        self.main_layout = QGridLayout()
+        self.left_pane = QVBoxLayout()
+        self.right_pane = QVBoxLayout()
+        self.main_layout.addLayout(self.left_pane,0,0)
+        self.main_layout.addLayout(self.right_pane,0,1)
+        self.main_layout.setColumnStretch(1,1)    
+
+        self.left_pane.addWidget(self.grp_box_actns)
+        self.left_pane.addWidget(self.grp_box_exp)
+        self.left_pane.addWidget(self.grp_box_img_file_ops)
+        self.left_pane.addWidget(self.grp_box_source)
+        self.left_pane.addStretch()
+
+        self.right_pane.addWidget(self.grp_box_telescope)
+        self.right_pane.addWidget(self.grp_box_logger)
         
         self.threadpool = QThreadPool()
         print("Multithreading with maximum %d threads" % self.threadpool.maxThreadCount())
 
-        self.setLayout(vbox)
+        self.setLayout(self.main_layout)
         # self.logger_window()
         self.show()
 
@@ -311,7 +334,9 @@ class POC(QWidget):
         self.btn_ds9.setIconSize(QSize(40,40))
         self.actns_layout.addWidget(self.btn_ds9)
 
-        # self.actns_layout.addStretch(0)
+        # self.actns_layout.set
+
+        # self.actns_layout.setSizeConstraint(QLayout.SetFixedSize)
         self.grp_box_actns.setLayout(self.actns_layout)
 
         # ===========================================================
@@ -359,6 +384,7 @@ class POC(QWidget):
         self.progressbar_exp_label = QLabel("",self)
         self.gridLayout_exp.addWidget(self.progressbar_exp_label,4,1)
 
+        # self.gridLayout_exp.setSizeConstraint(QLayout.SetFixedSize)
         self.grp_box_exp.setLayout(self.gridLayout_exp)
 
 
@@ -386,7 +412,7 @@ class POC(QWidget):
         self.input_img_file_name = QLineEdit(self,text="image.fits")
         self.gridLayout_img_file_ops.addWidget(self.input_img_file_name,1,1)
 
-
+        # self.gridLayout_img_file_ops.setSizeConstraint(QLayout.SetFixedSize)
         self.grp_box_img_file_ops.setLayout(self.gridLayout_img_file_ops)
         # ===========================================================
 
@@ -411,6 +437,9 @@ class POC(QWidget):
         self.source_info.setReadOnly(True)
         self.gridLayout_source.addWidget(self.source_info,2,0,1,2)
 
+        # self.gridLayout_source.addWidget(self.dummy,3,0,1,2)
+       
+        # self.gridLayout_source.setSizeConstraint(QLayout.SetFixedSize)
         self.grp_box_source.setLayout(self.gridLayout_source)
         # ===========================================================
 
@@ -428,6 +457,27 @@ class POC(QWidget):
         # ===========================================================
 
 
+        # ===========================================================
+        #                     Telescope
+        # ===========================================================
+        self.grp_box_telescope = QGroupBox("Telescope Status")
+        self.gridLayout_telescope = QGridLayout()
+
+        self.lbl_shutter = QLabel(self, text="Shutter:")
+        self.lbl_shutter.setStyleSheet("font: bold")
+        self.gridLayout_telescope.addWidget(self.lbl_shutter,0,0)
+
+        self.lbl_shutter_status = QLabel(self, text="Closed")
+        self.lbl_shutter_status.setStyleSheet("color: red; font: bold")
+        self.gridLayout_telescope.addWidget(self.lbl_shutter_status,0,1)
+
+        self.gridLayout_telescope.addWidget(self.dummy_line,0,2,1,1)
+        
+        self.grp_box_telescope.setLayout(self.gridLayout_telescope)
+        # ===========================================================
+
+
+
     
     def logger_window(self):
         self.logger = QMainWindow()
@@ -435,6 +485,7 @@ class POC(QWidget):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
+    app.setStyle('Fusion')
     window = POC()
     app.setWindowIcon(QIcon("icons/prl.png"))
     app.exec_()
