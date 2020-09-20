@@ -5,6 +5,7 @@ import tess_api
 import simbad_api
 from subprocess import Popen, PIPE, STDOUT
 from time import sleep
+import os
 
 import traceback, sys
 
@@ -130,8 +131,9 @@ class POC(QWidget):
         vbox = QGridLayout()
         vbox.addWidget(self.grp_box_actns,0,0)
         vbox.addWidget(self.grp_box_exp,1,0)
+        vbox.addWidget(self.grp_box_img_file_ops,2,0)
+        vbox.addWidget(self.grp_box_source,3,0)
         vbox.addWidget(self.grp_box_logger,0,1,3,1)
-        vbox.addWidget(self.grp_box_source,2,0)
         vbox.setColumnStretch(1,1)
         
         self.threadpool = QThreadPool()
@@ -259,7 +261,7 @@ class POC(QWidget):
             info = simbad_api.get_planet_data([name])
         else:
             return None
-
+    
         print(info)
         return info
 
@@ -273,6 +275,9 @@ class POC(QWidget):
         self.source_info.textCursor().insertHtml("Dec: "+info[0][2]+"<br>")
     # ==============================================================
 
+    def img_file_options(self):
+        fname = QFileDialog.getExistingDirectory(self, "Select Direcotry", os.getenv("HOME")+"\\Pictures")
+        self.input_img_dir.setText(fname)
 
     def creategui(self):
 
@@ -358,15 +363,33 @@ class POC(QWidget):
 
 
         # ===========================================================
-        #                     Logger
+        #                     Image File otions
         # ===========================================================
-        self.grp_box_logger = QGroupBox("Logger")
-        self.gridLayout_logger = QGridLayout()
+        self.grp_box_img_file_ops = QGroupBox("Image File Options")
+        self.gridLayout_img_file_ops = QGridLayout()
 
-        self.txt_logger = QTextEdit(self)
-        self.gridLayout_logger.addWidget(self.txt_logger)
+        self.lbl_img_dir = QLabel(self,text="Dir:")
+        self.gridLayout_img_file_ops.addWidget(self.lbl_img_dir,0,0)
 
-        self.grp_box_logger.setLayout(self.gridLayout_logger)
+        self.input_img_dir = QLineEdit(self,text=os.getenv("HOME")+"\\Pictures")
+        self.input_img_dir.setReadOnly(True)
+        self.gridLayout_img_file_ops.addWidget(self.input_img_dir,0,1)
+
+        self.btn_img_dir = QPushButton(self)
+        self.btn_img_dir.setIcon(QIcon("icons/folder.gif"))
+        self.btn_img_dir.clicked.connect(self.img_file_options)
+        self.gridLayout_img_file_ops.addWidget(self.btn_img_dir,0,2)
+
+        self.lbl_img_file_name = QLabel(self, text="File")
+        self.gridLayout_img_file_ops.addWidget(self.lbl_img_file_name,1,0)
+
+        self.input_img_file_name = QLineEdit(self,text="image.fits")
+        self.gridLayout_img_file_ops.addWidget(self.input_img_file_name,1,1)
+
+
+        self.grp_box_img_file_ops.setLayout(self.gridLayout_img_file_ops)
+        # ===========================================================
+
 
         # ===========================================================
         #                     Source Details
@@ -389,6 +412,22 @@ class POC(QWidget):
         self.gridLayout_source.addWidget(self.source_info,2,0,1,2)
 
         self.grp_box_source.setLayout(self.gridLayout_source)
+        # ===========================================================
+
+
+        # ===========================================================
+        #                     Logger
+        # ===========================================================
+        self.grp_box_logger = QGroupBox("Logger")
+        self.gridLayout_logger = QGridLayout()
+
+        self.txt_logger = QTextEdit(self)
+        self.gridLayout_logger.addWidget(self.txt_logger)
+
+        self.grp_box_logger.setLayout(self.gridLayout_logger)
+        # ===========================================================
+
+
     
     def logger_window(self):
         self.logger = QMainWindow()
