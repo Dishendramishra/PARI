@@ -1,0 +1,14 @@
+/*css stylesheet file that contains all the style information*/
+QGroupBox {
+    font-weight: bold;
+    border: 1px solid grey;
+    border-radius: 7px;
+    margin-top: 10px;
+    padding: 5px 5px 5px 5px;
+  }
+  
+  QGroupBox:title{
+    subcontrol-origin: margin;
+    subcontrol-position: top left;
+    padding: 0 3px 0 3px;
+  }

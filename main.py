@@ -142,10 +142,12 @@ class POC(QWidget):
         self.setIcon()
         self.creategui()
 
-
         self.main_layout = QGridLayout()
         self.left_pane = QVBoxLayout()
+        self.left_pane.setSpacing(10) 
+        self.left_pane.setMargin(5)
         self.right_pane = QVBoxLayout()
+        self.right_pane.setSpacing(15)
         self.main_layout.addLayout(self.left_pane,0,0)
         self.main_layout.addLayout(self.right_pane,0,1)
         self.main_layout.setColumnStretch(1,1)    
@@ -451,6 +453,7 @@ class POC(QWidget):
         self.gridLayout_logger = QGridLayout()
 
         self.txt_logger = QTextEdit(self)
+        self.txt_logger.setReadOnly(True)
         self.gridLayout_logger.addWidget(self.txt_logger)
 
         self.grp_box_logger.setLayout(self.gridLayout_logger)
@@ -486,6 +489,7 @@ class POC(QWidget):
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     app.setStyle('Fusion')
+    app.setStyleSheet(open("style.qss").read())
     window = POC()
     app.setWindowIcon(QIcon("icons/prl.png"))
     app.exec_()
