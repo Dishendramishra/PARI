@@ -1,40 +1,47 @@
 from PySide2.QtWidgets import *
 from PySide2.QtCore import *
 from PySide2.QtGui import *
-import tess_api 
+import tess_api
 import simbad_api
 from subprocess import Popen, PIPE, STDOUT
 from time import sleep
 import os
 
-import traceback, sys
+import traceback
+import sys
+
+import serial
+import serial.tools.list_ports
+from time import sleep
+
 
 if sys.platform == "linux" or sys.platform == "linux2":
     pass
 
 elif sys.platform == "win32":
     import ctypes
-    myappid = u'mycompany.myproduct.subproduct.version' # arbitrary string
+    myappid = u'mycompany.myproduct.subproduct.version'  # arbitrary string
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
 
 elif sys.platform == "darwin":
     pass
 
+
 class ArcWrapper():
-    def __init__(self,cmd):
-        
+    def __init__(self, cmd):
+
         cmd = cmd.split()
         self.process = Popen(cmd, stdin=PIPE, stdout=PIPE, stderr=STDOUT)
 
-    def write_stdin(self,cmd):
-        print(colored("grive: ","blue"),end="")
-        print(colored(cmd,"red"))
+    def write_stdin(self, cmd):
+        print(colored("grive: ", "blue"), end="")
+        print(colored(cmd, "red"))
         cmd = cmd+"\n"
         self.process.stdin.write(cmd.encode())
         self.process.stdin.flush()
 
     def read_stdout(self, break_flag=None):
-        text  = []
+        text = []
         for line in self.process.stdout:
             line = line.decode("utf-8")
             text.append(line)
@@ -42,10 +49,11 @@ class ArcWrapper():
             if break_flag and line.startswith(break_flag):
                 break
 
-        return text        
+        return text
 
     def kill(self):
         self.process.kill()
+
 
 class WorkerSignals(QObject):
     '''
@@ -55,10 +63,10 @@ class WorkerSignals(QObject):
 
     finished
         No data
-    
+
     error
         `tuple` (exctype, value, traceback.format_exc() )
-    
+
     result
         `object` data returned from processing, anything
 
@@ -68,13 +76,14 @@ class WorkerSignals(QObject):
     result = Signal(object)
     progress = Signal(str)
 
+
 class Worker(QRunnable):
     '''
     Worker thread
 
     Inherits from QRunnable to handler worker thread setup, signals and wrap-up.
 
-    :param callback: The function callback to run on this worker thread. Supplied args and 
+    :param callback: The function callback to run on this worker thread. Supplied args and
                      kwargs will be passed through to the runner.
     :type callback: function
     :param args: Arguments to pass to the callback function
@@ -92,7 +101,6 @@ class Worker(QRunnable):
 
         self.kwargs['progress_callback'] = self.signals.progress
 
-
     @Slot()  # QtCore.Slot
     def run(self):
         '''
@@ -101,22 +109,24 @@ class Worker(QRunnable):
 
         # Retrieve args/kwargs here; and fire processing using them
         try:
-            result = self.fn( 
-                        *self.args, 
-                        **self.kwargs)
-                        # status=self.signals.status,
-                        # progress=self.signals.progress)
+            result = self.fn(
+                *self.args,
+                **self.kwargs)
+            # status=self.signals.status,
+            # progress=self.signals.progress)
         except:
             traceback.print_exc()
             exctype, value = sys.exc_info()[:2]
             self.signals.error.emit((exctype, value, traceback.format_exc()))
 
         else:
-            self.signals.result.emit(result)  # Return the result of the processing
+            # Return the result of the processing
+            self.signals.result.emit(result)
 
         finally:
             self.signals.finished.emit()  # Done
-            
+
+
 class POC(QWidget):
 
     def __init__(self):
@@ -138,19 +148,19 @@ class POC(QWidget):
         # ===============================================================================
 
         self.setWindowTitle("POC")
-        self.setGeometry(300,200,500,350)
+        self.setGeometry(300, 200, 500, 350)
         self.setIcon()
         self.creategui()
 
         self.main_layout = QGridLayout()
         self.left_pane = QVBoxLayout()
-        self.left_pane.setSpacing(10) 
+        self.left_pane.setSpacing(10)
         self.left_pane.setMargin(5)
         self.right_pane = QVBoxLayout()
         self.right_pane.setSpacing(15)
-        self.main_layout.addLayout(self.left_pane,0,0)
-        self.main_layout.addLayout(self.right_pane,0,1)
-        self.main_layout.setColumnStretch(1,1)    
+        self.main_layout.addLayout(self.left_pane, 0, 0)
+        self.main_layout.addLayout(self.right_pane, 0, 1)
+        self.main_layout.setColumnStretch(1, 1)
 
         self.left_pane.addWidget(self.grp_box_actns)
         self.left_pane.addWidget(self.grp_box_exp)
@@ -160,13 +170,21 @@ class POC(QWidget):
 
         self.right_pane.addWidget(self.grp_box_telescope)
         self.right_pane.addWidget(self.grp_box_logger)
-        
+
         self.threadpool = QThreadPool()
-        print("Multithreading with maximum %d threads" % self.threadpool.maxThreadCount())
+        print("Multithreading with maximum %d threads" %
+              self.threadpool.maxThreadCount())
 
         self.setLayout(self.main_layout)
         # self.logger_window()
         self.show()
+
+        self.shutter_thread_flag = True
+        self.spawn_thread(self.shutter_status_thread, None, None)
+
+    def closeEvent(self, event):
+        self.shutter_thread_flag = False
+        print("closing")
 
     def setIcon(self):
         appIcon = QIcon()
@@ -179,7 +197,7 @@ class POC(QWidget):
         # self.tray.setVisible(True)
 
     def spawn_thread(self, fn_name, fn_progress, fn_result_handler):
-        
+
         if fn_name.__name__ == "expose_thread":
             self.btn_expose.setDisabled(True)
 
@@ -193,11 +211,11 @@ class POC(QWidget):
             worker.signals.result.connect(fn_result_handler)
         if fn_progress:
             worker.signals.progress.connect(fn_progress)
-        
+
         self.threadpool.start(worker)
-  
+
     # ==============================================================
-    #   ARC API functions 
+    #   ARC API functions
     # ==============================================================
 
     #  Exposure Functions
@@ -208,19 +226,20 @@ class POC(QWidget):
 
         if self.chk_btn_exp_time.checkState():
             cmd += " -e " + self.input_exp_time.text()
-            
-        self.spawn_thread(self.expose_thread(cmd), self.expose_progress, self.expose_done)
+
+        self.spawn_thread(self.expose_thread(
+            cmd), self.expose_progress, self.expose_done)
 
     def expose_thread(self, progress_callback):
         self.progressbar_exp.setValue(0)
         cmd = "api\\arcapi.exe PCIe -f api\\tim.lod -d 4 -c 6000 -r 6000"
 
-        exp_time = 0 
+        exp_time = 0
         exp_time_flag = self.chk_btn_exp_time.checkState()
         if exp_time_flag:
             cmd += " -e " + self.input_exp_time.text()
             exp_time = int(self.input_exp_time.text())
-        
+
         print(cmd)
 
         self.arc = ArcWrapper(cmd)
@@ -240,7 +259,7 @@ class POC(QWidget):
 
         # progress_callback.emit(self.arc.read_stdout())
 
-    def expose_progress(self,line):
+    def expose_progress(self, line):
         if line.startswith("Pixel Count:"):
             self.line_count += 1
             self.progressbar_exp.setValue(self.line_count/9)
@@ -258,7 +277,7 @@ class POC(QWidget):
     def power_off_controller(self):
         arc = ArcWrapper("api\\arcapi.exe PCIe poweroff")
         self.txt_logger.textCursor().insertHtml("Power Off Controller Done!<br>")
-    
+
     def power_on_controller(self):
         arc = ArcWrapper("api\\arcapi.exe PCIe poweron")
         self.txt_logger.textCursor().insertHtml("Power On Controller Done!<br>")
@@ -269,14 +288,13 @@ class POC(QWidget):
 
     # ==============================================================
 
-
     # ==============================================================
-    #   Source API functions 
+    #   Source API functions
     # ==============================================================
 
     def get_src_info(self, progress_callback):
         name = self.source_name.text()
-        name = name.replace(" ","")
+        name = name.replace(" ", "")
         name = name.lower()
 
         info = "None"
@@ -286,7 +304,7 @@ class POC(QWidget):
             info = simbad_api.get_planet_data([name])
         else:
             return None
-    
+
         print(info)
         return info
 
@@ -300,8 +318,47 @@ class POC(QWidget):
         self.source_info.textCursor().insertHtml("Dec: "+info[0][2]+"<br>")
     # ==============================================================
 
+    def shutter_status_thread(self, progress_callback):
+
+        ports = serial.tools.list_ports.comports()
+
+        target_port = None
+
+        for port, desc, hwid in sorted(ports):
+            # print("{}: {} [{}]".format(port, desc, hwid))
+            if "CH340" in desc:
+                target_port = port
+
+        while True and self.shutter_thread_flag:
+            try:
+                if target_port:
+                    ser = serial.Serial(target_port, 115200)
+                    status = ser.readline().decode()
+                    # print(status)
+                    status = status.strip()
+
+                    if status == "open":
+                        self.lbl_shutter_status.setText("Open")
+                        self.lbl_shutter_status.setStyleSheet(
+                            "color: green; font: bold")
+                    else:
+                        self.lbl_shutter_status.setText("Closed")
+                        self.lbl_shutter_status.setStyleSheet(
+                            "color: red; font: bold")
+                    ser.close()
+            except:
+                ports = serial.tools.list_ports.comports()
+                for port, desc, hwid in sorted(ports):
+                    # print("{}: {} [{}]".format(port, desc, hwid))
+                    if "CH340" in desc:
+                        target_port = port
+                self.lbl_shutter_status.setText("Unkown")
+                self.lbl_shutter_status.setStyleSheet(
+                    "color: blue; font: bold")
+
     def img_file_options(self):
-        fname = QFileDialog.getExistingDirectory(self, "Select Direcotry", os.getenv("HOME")+"\\Pictures")
+        fname = QFileDialog.getExistingDirectory(
+            self, "Select Direcotry", os.getenv("HOME")+"\\Pictures")
         self.input_img_dir.setText(fname)
 
     def creategui(self):
@@ -313,27 +370,29 @@ class POC(QWidget):
         self.actns_layout = QBoxLayout(QBoxLayout.LeftToRight)
 
         # self.actns_layout.setAlignment(AlignTop)
-        self.btn_ctrl_rst = QPushButton( self)
+        self.btn_ctrl_rst = QPushButton(self)
         self.btn_ctrl_rst.setIcon(QIcon("icons/ResetCtlr.gif"))
-        self.btn_ctrl_rst.setIconSize(QSize(40,40))
+        self.btn_ctrl_rst.setIconSize(QSize(40, 40))
         self.actns_layout.addWidget(self.btn_ctrl_rst)
         self.btn_ctrl_rst.clicked.connect(self.reset_controller)
-        
+
         self.btn_poweron = QPushButton(self)
         self.btn_poweron.setIcon(QIcon("icons/PowerOn.gif"))
-        self.btn_poweron.setIconSize(QSize(40,40))
+        self.btn_poweron.setIconSize(QSize(40, 40))
         self.actns_layout.addWidget(self.btn_poweron)
         self.btn_poweron.clicked.connect(self.power_on_controller)
 
         self.btn_poweroff = QPushButton(self)
         self.btn_poweroff.setIcon(QIcon("icons/PowerOff.gif"))
-        self.btn_poweroff.setIconSize(QSize(40,40))
+        self.btn_poweroff.setIconSize(QSize(40, 40))
         self.actns_layout.addWidget(self.btn_poweroff)
         self.btn_poweroff.clicked.connect(self.power_off_controller)
 
         self.btn_ds9 = QPushButton(self)
         self.btn_ds9.setIcon(QIcon("icons/ds9.png"))
-        self.btn_ds9.setIconSize(QSize(40,40))
+        self.btn_ds9.setIconSize(QSize(40, 40))
+        self.btn_ds9.clicked.connect(
+            lambda: print(self.threadpool.findChildren()))
         self.actns_layout.addWidget(self.btn_ds9)
 
         # self.actns_layout.set
@@ -347,48 +406,48 @@ class POC(QWidget):
         self.grp_box_exp = QGroupBox("Exposure Options")
         self.gridLayout_exp = QGridLayout()
 
-        self.chk_btn_exp_time = QCheckBox("Exp. Time",self)
+        self.chk_btn_exp_time = QCheckBox("Exp. Time", self)
         self.input_exp_time = QLineEdit(self)
         self.input_exp_time.setDisabled(True)
         self.chk_btn_exp_time.clicked.connect(
-            lambda : self.input_exp_time.setDisabled(not self.chk_btn_exp_time.isChecked()))
-        self.gridLayout_exp.addWidget(self.chk_btn_exp_time,0,0)
-        self.gridLayout_exp.addWidget(self.input_exp_time,0,1)
+            lambda: self.input_exp_time.setDisabled(not self.chk_btn_exp_time.isChecked()))
+        self.gridLayout_exp.addWidget(self.chk_btn_exp_time, 0, 0)
+        self.gridLayout_exp.addWidget(self.input_exp_time, 0, 1)
 
-        self.chk_btn_exp_delay = QCheckBox("Delay Exposure(sec)",self)
+        self.chk_btn_exp_delay = QCheckBox("Delay Exposure(sec)", self)
         self.input_exp_delay = QLineEdit(self)
         self.input_exp_delay.setDisabled(True)
         self.chk_btn_exp_delay.clicked.connect(
-            lambda : self.input_exp_delay.setDisabled(not self.chk_btn_exp_delay.isChecked()))
-        self.gridLayout_exp.addWidget(self.chk_btn_exp_delay,1,0)
-        self.gridLayout_exp.addWidget(self.input_exp_delay,1,1)
+            lambda: self.input_exp_delay.setDisabled(not self.chk_btn_exp_delay.isChecked()))
+        self.gridLayout_exp.addWidget(self.chk_btn_exp_delay, 1, 0)
+        self.gridLayout_exp.addWidget(self.input_exp_delay, 1, 1)
 
-        self.chk_btn_exp_multi = QCheckBox("Multiple Exposure",self)
+        self.chk_btn_exp_multi = QCheckBox("Multiple Exposure", self)
         self.input_exp_multi = QLineEdit(self)
         self.input_exp_multi.setDisabled(True)
         self.chk_btn_exp_multi.clicked.connect(
-            lambda : self.input_exp_multi.setDisabled(not self.chk_btn_exp_multi.isChecked()))
-        self.gridLayout_exp.addWidget(self.chk_btn_exp_multi,2,0)
-        self.gridLayout_exp.addWidget(self.input_exp_multi,2,1)
+            lambda: self.input_exp_multi.setDisabled(not self.chk_btn_exp_multi.isChecked()))
+        self.gridLayout_exp.addWidget(self.chk_btn_exp_multi, 2, 0)
+        self.gridLayout_exp.addWidget(self.input_exp_multi, 2, 1)
 
-        self.btn_expose = QPushButton(self,text="EXPOSE")
+        self.btn_expose = QPushButton(self, text="EXPOSE")
         self.btn_expose.setStyleSheet("color: red; font: bold")
-        self.gridLayout_exp.addWidget(self.btn_expose,3,1)
-        self.btn_expose.clicked.connect(lambda: self.spawn_thread(self.expose_thread, self.expose_progress, self.expose_done))
+        self.gridLayout_exp.addWidget(self.btn_expose, 3, 1)
+        self.btn_expose.clicked.connect(lambda: self.spawn_thread(
+            self.expose_thread, self.expose_progress, self.expose_done))
         # self.btn_expose.clicked.connect(self.expose_handler)
 
         self.progressbar_exp = QProgressBar()
         self.progressbar_exp.setMinimum(0)
         self.progressbar_exp.setMaximum(100)
         self.progressbar_exp.setValue(0)
-        self.gridLayout_exp.addWidget(self.progressbar_exp,4,0,1,2)
+        self.gridLayout_exp.addWidget(self.progressbar_exp, 4, 0, 1, 2)
 
-        self.progressbar_exp_label = QLabel("",self)
-        self.gridLayout_exp.addWidget(self.progressbar_exp_label,4,1)
+        self.progressbar_exp_label = QLabel("", self)
+        self.gridLayout_exp.addWidget(self.progressbar_exp_label, 4, 1)
 
         # self.gridLayout_exp.setSizeConstraint(QLayout.SetFixedSize)
         self.grp_box_exp.setLayout(self.gridLayout_exp)
-
 
         # ===========================================================
         #                     Image File otions
@@ -396,28 +455,28 @@ class POC(QWidget):
         self.grp_box_img_file_ops = QGroupBox("Image File Options")
         self.gridLayout_img_file_ops = QGridLayout()
 
-        self.lbl_img_dir = QLabel(self,text="Dir:")
-        self.gridLayout_img_file_ops.addWidget(self.lbl_img_dir,0,0)
+        self.lbl_img_dir = QLabel(self, text="Dir:")
+        self.gridLayout_img_file_ops.addWidget(self.lbl_img_dir, 0, 0)
 
-        self.input_img_dir = QLineEdit(self,text=os.getenv("HOME")+"\\Pictures")
+        self.input_img_dir = QLineEdit(
+            self, text=os.getenv("HOME")+"\\Pictures")
         self.input_img_dir.setReadOnly(True)
-        self.gridLayout_img_file_ops.addWidget(self.input_img_dir,0,1)
+        self.gridLayout_img_file_ops.addWidget(self.input_img_dir, 0, 1)
 
         self.btn_img_dir = QPushButton(self)
         self.btn_img_dir.setIcon(QIcon("icons/folder.gif"))
         self.btn_img_dir.clicked.connect(self.img_file_options)
-        self.gridLayout_img_file_ops.addWidget(self.btn_img_dir,0,2)
+        self.gridLayout_img_file_ops.addWidget(self.btn_img_dir, 0, 2)
 
         self.lbl_img_file_name = QLabel(self, text="File")
-        self.gridLayout_img_file_ops.addWidget(self.lbl_img_file_name,1,0)
+        self.gridLayout_img_file_ops.addWidget(self.lbl_img_file_name, 1, 0)
 
-        self.input_img_file_name = QLineEdit(self,text="image.fits")
-        self.gridLayout_img_file_ops.addWidget(self.input_img_file_name,1,1)
+        self.input_img_file_name = QLineEdit(self, text="image.fits")
+        self.gridLayout_img_file_ops.addWidget(self.input_img_file_name, 1, 1)
 
         # self.gridLayout_img_file_ops.setSizeConstraint(QLayout.SetFixedSize)
         self.grp_box_img_file_ops.setLayout(self.gridLayout_img_file_ops)
         # ===========================================================
-
 
         # ===========================================================
         #                     Source Details
@@ -425,26 +484,26 @@ class POC(QWidget):
         self.grp_box_source = QGroupBox("Source Details")
         self.gridLayout_source = QGridLayout()
 
-        self.source_lbl = QLabel(self,text="Source Name:")
-        self.gridLayout_source.addWidget(self.source_lbl,0,0)
-        
+        self.source_lbl = QLabel(self, text="Source Name:")
+        self.gridLayout_source.addWidget(self.source_lbl, 0, 0)
+
         self.source_name = QLineEdit(self)
-        self.gridLayout_source.addWidget(self.source_name,0,1)
-        
-        self.source_btn = QPushButton(self,text="submit")
-        self.gridLayout_source.addWidget(self.source_btn,1,0,1,2)
-        self.source_btn.clicked.connect(lambda: self.spawn_thread(self.get_src_info, None, self.set_src_info))
+        self.gridLayout_source.addWidget(self.source_name, 0, 1)
+
+        self.source_btn = QPushButton(self, text="submit")
+        self.gridLayout_source.addWidget(self.source_btn, 1, 0, 1, 2)
+        self.source_btn.clicked.connect(lambda: self.spawn_thread(
+            self.get_src_info, None, self.set_src_info))
 
         self.source_info = QTextEdit(self)
         self.source_info.setReadOnly(True)
-        self.gridLayout_source.addWidget(self.source_info,2,0,1,2)
+        self.gridLayout_source.addWidget(self.source_info, 2, 0, 1, 2)
 
         # self.gridLayout_source.addWidget(self.dummy,3,0,1,2)
-       
+
         # self.gridLayout_source.setSizeConstraint(QLayout.SetFixedSize)
         self.grp_box_source.setLayout(self.gridLayout_source)
         # ===========================================================
-
 
         # ===========================================================
         #                     Logger
@@ -459,7 +518,6 @@ class POC(QWidget):
         self.grp_box_logger.setLayout(self.gridLayout_logger)
         # ===========================================================
 
-
         # ===========================================================
         #                     Telescope
         # ===========================================================
@@ -468,23 +526,21 @@ class POC(QWidget):
 
         self.lbl_shutter = QLabel(self, text="Shutter:")
         self.lbl_shutter.setStyleSheet("font: bold")
-        self.gridLayout_telescope.addWidget(self.lbl_shutter,0,0)
+        self.gridLayout_telescope.addWidget(self.lbl_shutter, 0, 0)
 
-        self.lbl_shutter_status = QLabel(self, text="Closed")
-        self.lbl_shutter_status.setStyleSheet("color: red; font: bold")
-        self.gridLayout_telescope.addWidget(self.lbl_shutter_status,0,1)
+        self.lbl_shutter_status = QLabel(self, text="Unkown")
+        self.lbl_shutter_status.setStyleSheet("color: blue; font: bold")
+        self.gridLayout_telescope.addWidget(self.lbl_shutter_status, 0, 1)
 
-        self.gridLayout_telescope.addWidget(self.dummy_line,0,2,1,1)
-        
+        self.gridLayout_telescope.addWidget(self.dummy_line, 0, 2, 1, 1)
+
         self.grp_box_telescope.setLayout(self.gridLayout_telescope)
         # ===========================================================
 
-
-
-    
     def logger_window(self):
         self.logger = QMainWindow()
         self.logger.show()
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
