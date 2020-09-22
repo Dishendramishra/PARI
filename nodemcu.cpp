@@ -94,4 +94,5 @@ void loop()
         }
 
     }
+    Serial.println((shutter == 1) ? "open" : "closed");
 }
