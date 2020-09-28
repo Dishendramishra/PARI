@@ -13,6 +13,7 @@ import sys
 import serial
 import serial.tools.list_ports
 from time import sleep
+import pynmea2
 
 
 if sys.platform == "linux" or sys.platform == "linux2":
@@ -168,7 +169,7 @@ class POC(QWidget):
         self.left_pane.addWidget(self.grp_box_source)
         self.left_pane.addStretch()
 
-        self.right_pane.addWidget(self.grp_box_telescope)
+        self.right_pane.addWidget(self.grp_box_status)
         self.right_pane.addWidget(self.grp_box_logger)
 
         self.threadpool = QThreadPool()
@@ -180,10 +181,14 @@ class POC(QWidget):
         self.show()
 
         self.shutter_thread_flag = True
+        self.gps_flag = True
+        # self.shutter_thread_flag, self.gps_flag = False, False
         self.spawn_thread(self.shutter_status_thread, None, None)
+        self.spawn_thread(self.gps_thread, None, None)
 
     def closeEvent(self, event):
         self.shutter_thread_flag = False
+        self.gps_flag = False
         print("closing")
 
     def setIcon(self):
@@ -355,6 +360,34 @@ class POC(QWidget):
                 self.lbl_shutter_status.setText("Unkown")
                 self.lbl_shutter_status.setStyleSheet(
                     "color: blue; font: bold")
+        
+    def gps_thread(self, progress_callback):
+        ports = serial.tools.list_ports.comports()
+        target_port = None
+
+        for port, desc, hwid in sorted(ports):
+            # print("{}: {} [{}]".format(port, desc, hwid))
+            if "PID=067B:2303" in hwid:
+                print(port)
+                target_port = port
+
+        gps_details = None
+
+        if target_port:
+            ser = serial.Serial(target_port, 9600)
+            while True and self.gps_flag:
+                try:
+                    line = ser.readline().decode()
+                    # print(line,end="")
+                    if line.startswith("$GNRMC"):
+                        gps_details = pynmea2.parse(line)
+                        # print(line,end="")
+
+                        self.lbl_gps_status.setText(("UTC Time : "+gps_details.datetime.strftime("%d-%m-%Y %H:%M")+"\n"+\
+                                                    "Longitude: {}\nLatitude  : {}".format(gps_details.longitude, gps_details.latitude)))
+                except Exception as e:
+                    print(str(e))
+                    continue
 
     def img_file_options(self):
         fname = QFileDialog.getExistingDirectory(
@@ -519,22 +552,27 @@ class POC(QWidget):
         # ===========================================================
 
         # ===========================================================
-        #                     Telescope
+        #                    Status
         # ===========================================================
-        self.grp_box_telescope = QGroupBox("Telescope Status")
-        self.gridLayout_telescope = QGridLayout()
+        self.grp_box_status = QGroupBox("Status")
+        self.gridLayout_status = QGridLayout()
 
         self.lbl_shutter = QLabel(self, text="Shutter:")
         self.lbl_shutter.setStyleSheet("font: bold")
-        self.gridLayout_telescope.addWidget(self.lbl_shutter, 0, 0)
+        self.gridLayout_status.addWidget(self.lbl_shutter, 0, 0)
 
         self.lbl_shutter_status = QLabel(self, text="Unkown")
         self.lbl_shutter_status.setStyleSheet("color: blue; font: bold")
-        self.gridLayout_telescope.addWidget(self.lbl_shutter_status, 0, 1)
+        self.gridLayout_status.addWidget(self.lbl_shutter_status, 0, 1)
 
-        self.gridLayout_telescope.addWidget(self.dummy_line, 0, 2, 1, 1)
+        self.gridLayout_status.addWidget(self.dummy_line, 0, 2, 1, 1)
 
-        self.grp_box_telescope.setLayout(self.gridLayout_telescope)
+        self.lbl_gps = QLabel(self,text="GPS Details")
+        self.lbl_gps.setStyleSheet("color: black; font: bold")
+        self.gridLayout_status.addWidget(self.lbl_gps,1,0)
+        self.lbl_gps_status = QLabel(self)
+        self.gridLayout_status.addWidget(self.lbl_gps_status,2,0,1,3)
+        self.grp_box_status.setLayout(self.gridLayout_status)
         # ===========================================================
 
     def logger_window(self):
