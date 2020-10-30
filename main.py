@@ -1,8 +1,8 @@
 from PySide2.QtWidgets import *
 from PySide2.QtCore import *
 from PySide2.QtGui import *
-import tess_api
-import simbad_api
+from modules import tess_api
+from modules import simbad_api
 from subprocess import Popen, PIPE, STDOUT
 from time import sleep
 import os
@@ -193,7 +193,7 @@ class POC(QWidget):
 
     def setIcon(self):
         appIcon = QIcon()
-        appIcon.addFile("icons/prl.png")
+        appIcon.addFile("resources/icons/prl.png")
         self.setWindowIcon(appIcon)
 
         # system tray icon
@@ -404,25 +404,25 @@ class POC(QWidget):
 
         # self.actns_layout.setAlignment(AlignTop)
         self.btn_ctrl_rst = QPushButton(self)
-        self.btn_ctrl_rst.setIcon(QIcon("icons/ResetCtlr.gif"))
+        self.btn_ctrl_rst.setIcon(QIcon("resources/icons/ResetCtlr.gif"))
         self.btn_ctrl_rst.setIconSize(QSize(40, 40))
         self.actns_layout.addWidget(self.btn_ctrl_rst)
         self.btn_ctrl_rst.clicked.connect(self.reset_controller)
 
         self.btn_poweron = QPushButton(self)
-        self.btn_poweron.setIcon(QIcon("icons/PowerOn.gif"))
+        self.btn_poweron.setIcon(QIcon("resources/icons/PowerOn.gif"))
         self.btn_poweron.setIconSize(QSize(40, 40))
         self.actns_layout.addWidget(self.btn_poweron)
         self.btn_poweron.clicked.connect(self.power_on_controller)
 
         self.btn_poweroff = QPushButton(self)
-        self.btn_poweroff.setIcon(QIcon("icons/PowerOff.gif"))
+        self.btn_poweroff.setIcon(QIcon("resources/icons/PowerOff.gif"))
         self.btn_poweroff.setIconSize(QSize(40, 40))
         self.actns_layout.addWidget(self.btn_poweroff)
         self.btn_poweroff.clicked.connect(self.power_off_controller)
 
         self.btn_ds9 = QPushButton(self)
-        self.btn_ds9.setIcon(QIcon("icons/ds9.png"))
+        self.btn_ds9.setIcon(QIcon("resources/icons/ds9.png"))
         self.btn_ds9.setIconSize(QSize(40, 40))
         self.btn_ds9.clicked.connect(
             lambda: print(self.threadpool.findChildren()))
@@ -497,7 +497,7 @@ class POC(QWidget):
         self.gridLayout_img_file_ops.addWidget(self.input_img_dir, 0, 1)
 
         self.btn_img_dir = QPushButton(self)
-        self.btn_img_dir.setIcon(QIcon("icons/folder.gif"))
+        self.btn_img_dir.setIcon(QIcon("resources/icons/folder.gif"))
         self.btn_img_dir.clicked.connect(self.img_file_options)
         self.gridLayout_img_file_ops.addWidget(self.btn_img_dir, 0, 2)
 
@@ -583,8 +583,8 @@ class POC(QWidget):
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     app.setStyle('Fusion')
-    app.setStyleSheet(open("style.qss").read())
+    app.setStyleSheet(open("resources/styles/style.qss").read())
     window = POC()
-    app.setWindowIcon(QIcon("icons/prl.png"))
+    app.setWindowIcon(QIcon("resources/icons/prl.png"))
     app.exec_()
     sys.exit()
