@@ -4,3 +4,4 @@ bs4
 julian
 termcolor
 colorama
+pynmea2
