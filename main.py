@@ -154,17 +154,17 @@ class POC(QWidget):
         self.creategui()
 
         self.main_layout = QGridLayout()
-        
+
         self.left_pane = QVBoxLayout()
         self.left_pane.setSpacing(10)
         self.left_pane.setMargin(5)
-        
+
         self.middle_pane = QVBoxLayout()
         self.middle_pane.setSpacing(15)
 
         self.right_pane = QVBoxLayout()
         self.right_pane.setSpacing(15)
-        
+
         self.main_layout.addLayout(self.left_pane, 0, 0)
         self.main_layout.addLayout(self.middle_pane, 0, 1)
         self.main_layout.addLayout(self.right_pane, 0, 2)
@@ -331,6 +331,8 @@ class POC(QWidget):
         self.source_info.clear()
         self.source_info.textCursor().insertHtml("RA: "+info[0][1]+"<br>")
         self.source_info.textCursor().insertHtml("Dec: "+info[0][2]+"<br>")
+        self.target_name.setText(self.source_name.text())
+        self.radec_name.setText(info[0][1]+"\n"+info[0][2])
     # ==============================================================
 
     def shutter_status_thread(self, progress_callback):
@@ -370,7 +372,7 @@ class POC(QWidget):
                 self.lbl_shutter_status.setText("Unkown")
                 self.lbl_shutter_status.setStyleSheet(
                     "color: blue; font: bold")
-        
+
     def gps_thread(self, progress_callback):
         ports = serial.tools.list_ports.comports()
         target_port = None
@@ -413,23 +415,34 @@ class POC(QWidget):
         self.actns_layout = QBoxLayout(QBoxLayout.LeftToRight)
 
         # self.actns_layout.setAlignment(AlignTop)
+
+        self.btn_ctrl_setup = QPushButton(self)
+        self.btn_ctrl_setup.setIcon(QIcon("resources/icons/setup.ico"))
+        self.btn_ctrl_setup.setIconSize(QSize(40, 40))
+        self.actns_layout.addWidget(self.btn_ctrl_setup)
+        # self.btn_ctrl_setup.clicked.connect(self.reset_controller)
+        self.btn_ctrl_setup.setToolTip("Loads tim.lod file")
+
         self.btn_ctrl_rst = QPushButton(self)
         self.btn_ctrl_rst.setIcon(QIcon("resources/icons/ResetCtlr.gif"))
         self.btn_ctrl_rst.setIconSize(QSize(40, 40))
         self.actns_layout.addWidget(self.btn_ctrl_rst)
         self.btn_ctrl_rst.clicked.connect(self.reset_controller)
+        self.btn_ctrl_rst.setToolTip("Resets Controller")
 
         self.btn_poweron = QPushButton(self)
         self.btn_poweron.setIcon(QIcon("resources/icons/PowerOn.gif"))
         self.btn_poweron.setIconSize(QSize(40, 40))
         self.actns_layout.addWidget(self.btn_poweron)
         self.btn_poweron.clicked.connect(self.power_on_controller)
+        self.btn_poweron.setToolTip("Power On")
 
         self.btn_poweroff = QPushButton(self)
         self.btn_poweroff.setIcon(QIcon("resources/icons/PowerOff.gif"))
         self.btn_poweroff.setIconSize(QSize(40, 40))
         self.actns_layout.addWidget(self.btn_poweroff)
         self.btn_poweroff.clicked.connect(self.power_off_controller)
+        self.btn_poweroff.setToolTip("Power Off")
 
         self.btn_ds9 = QPushButton(self)
         self.btn_ds9.setIcon(QIcon("resources/icons/ds9.png"))
@@ -437,6 +450,7 @@ class POC(QWidget):
         self.btn_ds9.clicked.connect(
             lambda: print(self.threadpool.findChildren()))
         self.actns_layout.addWidget(self.btn_ds9)
+        self.btn_ds9.setToolTip("Opens DS9")
 
         # self.actns_layout.set
 
@@ -534,7 +548,8 @@ class POC(QWidget):
         self.gridLayout_source.addWidget(self.source_name, 0, 1)
 
         self.source_btn = QPushButton(self, text="submit")
-        self.gridLayout_source.addWidget(self.source_btn, 1, 0, 1, 2)
+        self.source_btn.setFixedWidth(120)
+        self.gridLayout_source.addWidget(self.source_btn, 1, 0, 1, 2,Qt.AlignRight)
         self.source_btn.clicked.connect(lambda: self.spawn_thread(
             self.get_src_info, None, self.set_src_info))
 
@@ -567,7 +582,8 @@ class POC(QWidget):
         self.gridLayout_observation.addWidget(self.exp_type_name, 1, 1)
 
         self.radec_lbl = QLabel(self, text="RA/DEC:")
-        self.radec_name = QLineEdit(self)
+        self.radec_name = QTextEdit(self)
+        self.radec_name.setFixedHeight(40)
         self.gridLayout_observation.addWidget(self.radec_lbl, 2, 0)
         self.gridLayout_observation.addWidget(self.radec_name, 2, 1)
 
@@ -579,7 +595,7 @@ class POC(QWidget):
         self.gridLayout_observation.addWidget(self.observers_name_name, 3, 1)
 
         self.gridLayout_observation.addWidget(self.dummy_txt,4,0,1,2)
-        
+
         self.grp_box_observation.setLayout(self.gridLayout_observation)
         # ===========================================================
 
