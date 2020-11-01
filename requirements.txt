@@ -5,3 +5,5 @@ julian
 termcolor
 colorama
 pynmea2
+pyastronomy
+scipy
