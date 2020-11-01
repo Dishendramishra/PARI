@@ -6,6 +6,7 @@ from modules import simbad_api
 from subprocess import Popen, PIPE, STDOUT
 from time import sleep
 import os
+from pathlib import Path
 
 import traceback
 import sys
@@ -403,7 +404,7 @@ class POC(QWidget):
 
     def img_file_options(self):
         fname = QFileDialog.getExistingDirectory(
-            self, "Select Direcotry", os.getenv("HOME")+"\\Pictures")
+            self, "Select Direcotry", str(Path.home())+"\\Pictures")
         self.input_img_dir.setText(fname)
 
     def creategui(self):
@@ -516,7 +517,7 @@ class POC(QWidget):
         self.gridLayout_img_file_ops.addWidget(self.lbl_img_dir, 0, 0)
 
         self.input_img_dir = QLineEdit(
-            self, text=os.getenv("HOME")+"\\Pictures")
+            self, text=str(Path.home())+"\\Pictures")
         self.input_img_dir.setReadOnly(True)
         self.gridLayout_img_file_ops.addWidget(self.input_img_dir, 0, 1)
 
