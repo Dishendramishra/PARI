@@ -192,7 +192,7 @@ class POC(QWidget):
 
         self.shutter_thread_flag = True
         self.gps_flag = True
-        # self.shutter_thread_flag, self.gps_flag = False, False
+        self.shutter_thread_flag, self.gps_flag = False, False
         self.spawn_thread(self.shutter_status_thread, None, None)
         self.spawn_thread(self.gps_thread, None, None)
 
