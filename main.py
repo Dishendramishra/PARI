@@ -135,7 +135,7 @@ class POC(QWidget):
 
         self.line_count = 0
 
-        self.setMinimumWidth(700)
+        self.setMinimumWidth(846)
         # ===============================================================================
         #   Dummy Widgets for filling space
         # ===============================================================================
@@ -154,20 +154,30 @@ class POC(QWidget):
         self.creategui()
 
         self.main_layout = QGridLayout()
+        
         self.left_pane = QVBoxLayout()
         self.left_pane.setSpacing(10)
         self.left_pane.setMargin(5)
+        
+        self.middle_pane = QVBoxLayout()
+        self.middle_pane.setSpacing(15)
+
         self.right_pane = QVBoxLayout()
         self.right_pane.setSpacing(15)
+        
         self.main_layout.addLayout(self.left_pane, 0, 0)
-        self.main_layout.addLayout(self.right_pane, 0, 1)
-        self.main_layout.setColumnStretch(1, 1)
+        self.main_layout.addLayout(self.middle_pane, 0, 1)
+        self.main_layout.addLayout(self.right_pane, 0, 2)
+
+        self.main_layout.setColumnStretch(2, 1)
 
         self.left_pane.addWidget(self.grp_box_actns)
         self.left_pane.addWidget(self.grp_box_exp)
         self.left_pane.addWidget(self.grp_box_img_file_ops)
         self.left_pane.addWidget(self.grp_box_source)
         self.left_pane.addStretch()
+
+        self.middle_pane.addWidget(self.grp_box_observation)
 
         self.right_pane.addWidget(self.grp_box_status)
         self.right_pane.addWidget(self.grp_box_logger)
@@ -537,6 +547,42 @@ class POC(QWidget):
         # self.gridLayout_source.setSizeConstraint(QLayout.SetFixedSize)
         self.grp_box_source.setLayout(self.gridLayout_source)
         # ===========================================================
+
+        # ===========================================================
+        #                 Observation Details
+        # ===========================================================
+        self.grp_box_observation = QGroupBox("Observation Details")
+        self.gridLayout_observation = QGridLayout()
+        self.grp_box_observation.setMaximumWidth(240)
+
+        self.target_lbl = QLabel(self, text="Source Name:")
+        self.target_name = QLineEdit(self)
+        self.gridLayout_observation.addWidget(self.target_lbl, 0, 0)
+        self.gridLayout_observation.addWidget(self.target_name, 0, 1)
+
+        self.exp_type_lbl = QLabel(self, text="Exposure Type:")
+        self.exp_type_name = QComboBox(self)
+        self.exp_type_name.addItems(["Flat","SCI","Ur-Ur"])
+        self.gridLayout_observation.addWidget(self.exp_type_lbl, 1, 0)
+        self.gridLayout_observation.addWidget(self.exp_type_name, 1, 1)
+
+        self.radec_lbl = QLabel(self, text="RA/DEC:")
+        self.radec_name = QLineEdit(self)
+        self.gridLayout_observation.addWidget(self.radec_lbl, 2, 0)
+        self.gridLayout_observation.addWidget(self.radec_name, 2, 1)
+
+        self.observers_name_lbl = QLabel(self, text="Observers:")
+        self.observers_name_lbl.setAlignment(Qt.AlignTop)
+        self.observers_name_name = QTextEdit(self)
+        self.observers_name_name.setFixedHeight(50)
+        self.gridLayout_observation.addWidget(self.observers_name_lbl, 3, 0)
+        self.gridLayout_observation.addWidget(self.observers_name_name, 3, 1)
+
+        self.gridLayout_observation.addWidget(self.dummy_txt,4,0,1,2)
+        
+        self.grp_box_observation.setLayout(self.gridLayout_observation)
+        # ===========================================================
+
 
         # ===========================================================
         #                     Logger
