@@ -11,6 +11,9 @@ def get_planet_data(hd_names):
             dec = response.columns['DEC'][0]
             main_id = response.columns['MAIN_ID'][0]
 
+            ra = ra.replace(" ",":")
+            dec = dec.replace(" ",":")
+
             source = [] 
             source.extend([main_id,ra,dec])
             data.append(source)
