@@ -33,18 +33,22 @@ def get_planet_data(toi_names):
             td = table.find_all("td")
 
             response = response.text
-            ra = re.search("\d+\.\d+&deg",response).group(0)[:-4]
-            dec = re.search("[+|-]\d+\.\d+&deg",response).group(0)[:-4]
+            # ra = re.search("\d+\.\d+&deg",response).group(0)[:-4]
+            # dec = re.search("[+|-]\d+\.\d+&deg",response).group(0)[:-4]
+            
+            ra = re.search("\d\d:\d\d:\d\d\.\d\d",response).group(0)        # HH:MM:SS
+            dec = re.search("[\+-]\d\d:\d\d:\d\d\.\d\d",response).group(0)  # HH:MM:SS
+
             tyc_name = re.search("TYC\s.+\-\d,",response).group(0)[:-1]
             print(dec)
             planet = []
-            planet.extend(["TOI "+name, ra, dec, tyc_name])
+            planet.extend([name, ra, dec, tyc_name])
             tmp = [td[3].text, td[4].text, td[7].text]  # epoch,period,duration
             tmp = [ i[:i.find(" ")-1] for i in tmp]
             planet.extend(tmp)
 
             data.append(planet)
-            print("   TOI",name,"=",planet)
+            print(name,"=",planet)
 
         except Exception as e:
             print(e)
