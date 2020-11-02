@@ -264,8 +264,9 @@ class POC(QWidget):
         self.arc = ArcWrapper(cmd)
 
         if exp_time_flag:
-            for i in range(exp_time):
-                self.progressbar_exp_label.setText("Exposure: "+str(i+1))
+            self.progressbar_exp.reset()
+            for i in range(exp_time,0,-1):
+                self.progressbar_exp_label.setText("Waiting: "+str(i))
                 sleep(1)
         self.progressbar_exp_label.setText("")
 
@@ -505,7 +506,7 @@ class POC(QWidget):
         self.gridLayout_exp.addWidget(self.progressbar_exp, 4, 0, 1, 2)
 
         self.progressbar_exp_label = QLabel("", self)
-        self.gridLayout_exp.addWidget(self.progressbar_exp_label, 4, 1)
+        self.gridLayout_exp.addWidget(self.progressbar_exp_label, 4, 0, 1, 2, Qt.AlignCenter)
 
         # self.gridLayout_exp.setSizeConstraint(QLayout.SetFixedSize)
         self.grp_box_exp.setLayout(self.gridLayout_exp)
