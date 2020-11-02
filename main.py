@@ -578,7 +578,7 @@ class POC(QWidget):
 
         self.exp_type_lbl = QLabel(self, text="Exposure Type:")
         self.exp_type_name = QComboBox(self)
-        self.exp_type_name.addItems(["Flat","SCI","Ur-Ur"])
+        self.exp_type_name.addItems(["Dark","Dark-Tung","Tung-Dark","UAr-UAr","Dark-UAr","ThAr-ThAr","Dark-ThAr","Star-UAr","Star-ThAr","Star-Dark"])
         self.gridLayout_observation.addWidget(self.exp_type_lbl, 1, 0)
         self.gridLayout_observation.addWidget(self.exp_type_name, 1, 1)
 
@@ -595,7 +595,14 @@ class POC(QWidget):
         self.gridLayout_observation.addWidget(self.observers_name_lbl, 3, 0)
         self.gridLayout_observation.addWidget(self.observers_name_name, 3, 1)
 
-        self.gridLayout_observation.addWidget(self.dummy_txt,4,0,1,2)
+        self.comment_lbl = QLabel(self, text="Comments")
+        self.comment_lbl.setAlignment(Qt.AlignTop)
+        self.comment_name = QTextEdit(self)
+        self.comment_name.setFixedHeight(40)
+        self.gridLayout_observation.addWidget(self.comment_lbl, 4, 0)
+        self.gridLayout_observation.addWidget(self.comment_name, 4, 1)
+
+        self.gridLayout_observation.addWidget(self.dummy_txt,5,0,1,2)
 
         self.grp_box_observation.setLayout(self.gridLayout_observation)
         # ===========================================================
