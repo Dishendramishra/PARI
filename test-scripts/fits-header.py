@@ -18,13 +18,16 @@ def update_header(filename):
     header["EXP_TIME"]      =  "5 SEC"
     header["OBSVR"]         =  "DISHENDRA"
     header["OBSRVTY"]       =  "MIRO"
+    header["TELESCOPE"]     =  "2.5m"
+    header["INSTRUMENT"]    =  "PARAS2"
     header["AIRMASS"]       =  2
     header["LONGITUD"]      =  ""
     header["LATITUDE"]      =  ""
-    header["HEIGHT"]        =  ""
-    header["HR_ANGLE"]      =  ""
-    header["ALTITUDE"]      =  ""
-    header["AZIMUTH"]       =  ""
+    header["OBS ELEV"]      =  ""
+    header["HR_ANGLE"]      =  ""   #
+    header["ALTITUDE"]      =  ""   # get from telescope/ manual calculations
+    header["AZIMUTH"]       =  ""   #
+    header["LST"]           =  ""   
     
     fits.writeto(filename,data=data,header=header,overwrite=1)
 
