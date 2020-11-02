@@ -256,6 +256,9 @@ class POC(QWidget):
             cmd += " -e " + self.input_exp_time.text()
             exp_time = int(self.input_exp_time.text())
 
+        fits_file_name = self.input_img_dir.text()+"\\"+self.input_img_file_name.text()
+        cmd += " -fn " + fits_file_name
+            
         print(cmd)
 
         self.arc = ArcWrapper(cmd)
