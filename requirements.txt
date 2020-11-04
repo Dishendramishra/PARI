@@ -4,6 +4,7 @@ bs4
 julian
 termcolor
 colorama
+pyserial
 pynmea2
 pyastronomy
 scipy
