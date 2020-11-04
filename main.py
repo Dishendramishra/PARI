@@ -256,9 +256,14 @@ class POC(QWidget):
             cmd += " -e " + self.input_exp_time.text()
             exp_time = int(self.input_exp_time.text())
 
+        shutter = 0
+        shutter = self.chk_btn_open_shutter.checkState()
+        if  shutter:
+            cmd += " -o"
+        
         fits_file_name = self.input_img_dir.text()+"\\"+self.input_img_file_name.text()
         cmd += " -fn " + fits_file_name
-            
+
         print(cmd)
 
         self.arc = ArcWrapper(cmd)
@@ -492,9 +497,12 @@ class POC(QWidget):
         self.gridLayout_exp.addWidget(self.chk_btn_exp_multi, 2, 0)
         self.gridLayout_exp.addWidget(self.input_exp_multi, 2, 1)
 
+        self.chk_btn_open_shutter = QCheckBox("Open Shutter", self)
+        self.gridLayout_exp.addWidget(self.chk_btn_open_shutter, 3, 0)
+
         self.btn_expose = QPushButton(self, text="EXPOSE")
         self.btn_expose.setStyleSheet("color: red; font: bold")
-        self.gridLayout_exp.addWidget(self.btn_expose, 3, 1)
+        self.gridLayout_exp.addWidget(self.btn_expose, 4, 1)
         self.btn_expose.clicked.connect(lambda: self.spawn_thread(
             self.expose_thread, self.expose_progress, self.expose_done))
         # self.btn_expose.clicked.connect(self.expose_handler)
@@ -503,10 +511,10 @@ class POC(QWidget):
         self.progressbar_exp.setMinimum(0)
         self.progressbar_exp.setMaximum(100)
         self.progressbar_exp.setValue(0)
-        self.gridLayout_exp.addWidget(self.progressbar_exp, 4, 0, 1, 2)
+        self.gridLayout_exp.addWidget(self.progressbar_exp, 5, 0, 1, 2)
 
         self.progressbar_exp_label = QLabel("", self)
-        self.gridLayout_exp.addWidget(self.progressbar_exp_label, 4, 0, 1, 2, Qt.AlignCenter)
+        self.gridLayout_exp.addWidget(self.progressbar_exp_label, 5, 0, 1, 2, Qt.AlignCenter)
 
         # self.gridLayout_exp.setSizeConstraint(QLayout.SetFixedSize)
         self.grp_box_exp.setLayout(self.gridLayout_exp)
