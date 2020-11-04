@@ -135,6 +135,18 @@ class POC(QWidget):
         super().__init__()
 
         self.line_count = 0
+        self.EXP_TIMES = {
+        "Dark"        :   "100",
+        "Dark-Tung"   :   "600",
+        "Tung-Dark"   :   "400",
+        "UAr-UAr"     :   "400",
+        "Dark-UAr"    :   "600",
+        "ThAr-ThAr"   :   "400",
+        "Dark-ThAr"   :   "1200",
+        "Star-UAr"    :   "1800",
+        "Star-ThAr"   :   "1800",
+        "Star-Dark"   :   "1800"}
+
 
         self.setMinimumWidth(846)
         # ===============================================================================
@@ -591,6 +603,8 @@ class POC(QWidget):
         self.exp_type_lbl = QLabel(self, text="Exposure Type:")
         self.exp_type_name = QComboBox(self)
         self.exp_type_name.addItems(["Dark","Dark-Tung","Tung-Dark","UAr-UAr","Dark-UAr","ThAr-ThAr","Dark-ThAr","Star-UAr","Star-ThAr","Star-Dark"])
+        self.exp_type_name.currentTextChanged.connect(lambda: self.input_exp_time.setText(self.EXP_TIMES[self.exp_type_name.currentText()]))
+        self.input_exp_time.setText(self.EXP_TIMES[self.exp_type_name.currentText()])
         self.gridLayout_observation.addWidget(self.exp_type_lbl, 1, 0)
         self.gridLayout_observation.addWidget(self.exp_type_name, 1, 1)
 
