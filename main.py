@@ -149,7 +149,7 @@ class POC(QWidget):
         self.dummy_line.setDisabled(True)
         # ===============================================================================
 
-        self.setWindowTitle("POC")
+        self.setWindowTitle("Paras2 Observation Console")
         self.setGeometry(300, 200, 500, 350)
         self.setIcon()
         self.creategui()
@@ -614,7 +614,12 @@ class POC(QWidget):
         self.gridLayout_observation.addWidget(self.comment_lbl, 4, 0)
         self.gridLayout_observation.addWidget(self.comment_name, 4, 1)
 
-        self.gridLayout_observation.addWidget(self.dummy_txt,5,0,1,2)
+        self.lbl_prl_logo = QLabel(self)
+        self.prl_logo = QPixmap("resources/icons/prl.png")
+        self.lbl_prl_logo.setPixmap(self.prl_logo)
+        self.gridLayout_observation.addWidget(self.lbl_prl_logo, 5,0,1,2)
+
+        # self.gridLayout_observation.addWidget(self.dummy_txt,6,0,1,2)
 
         self.grp_box_observation.setLayout(self.gridLayout_observation)
         # ===========================================================
