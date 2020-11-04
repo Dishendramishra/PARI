@@ -615,7 +615,7 @@ class POC(QWidget):
         self.gridLayout_observation.addWidget(self.comment_name, 4, 1)
 
         self.lbl_prl_logo = QLabel(self)
-        self.prl_logo = QPixmap("resources/icons/prl.png")
+        self.prl_logo = QPixmap("resources/icons/prl_back.png")
         self.lbl_prl_logo.setPixmap(self.prl_logo)
         self.gridLayout_observation.addWidget(self.lbl_prl_logo, 5,0,1,2)
 
