@@ -216,7 +216,7 @@ class POC(QWidget):
 
     def setIcon(self):
         appIcon = QIcon()
-        appIcon.addFile("resources/icons/prl.png")
+        appIcon.addFile("resources/icons/prl2.png")
         self.setWindowIcon(appIcon)
 
         # system tray icon
