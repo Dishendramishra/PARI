@@ -16,6 +16,7 @@ import serial.tools.list_ports
 from time import sleep
 import pynmea2
 
+from arcwrapper import ArcWrapper
 
 if sys.platform == "linux" or sys.platform == "linux2":
     pass
@@ -27,35 +28,6 @@ elif sys.platform == "win32":
 
 elif sys.platform == "darwin":
     pass
-
-
-class ArcWrapper():
-    def __init__(self, cmd):
-
-        cmd = cmd.split()
-        self.process = Popen(cmd, stdin=PIPE, stdout=PIPE, stderr=STDOUT)
-
-    def write_stdin(self, cmd):
-        print(colored("grive: ", "blue"), end="")
-        print(colored(cmd, "red"))
-        cmd = cmd+"\n"
-        self.process.stdin.write(cmd.encode())
-        self.process.stdin.flush()
-
-    def read_stdout(self, break_flag=None):
-        text = []
-        for line in self.process.stdout:
-            line = line.decode("utf-8")
-            text.append(line)
-
-            if break_flag and line.startswith(break_flag):
-                break
-
-        return text
-
-    def kill(self):
-        self.process.kill()
-
 
 class WorkerSignals(QObject):
     '''
@@ -277,7 +249,7 @@ class POC(QWidget):
 
         print(cmd)
 
-        self.arc = ArcWrapper(cmd)
+        self.arc = ArcWrapper()
 
         if exp_time_flag:
             self.progressbar_exp.reset()
