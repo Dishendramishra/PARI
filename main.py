@@ -290,7 +290,7 @@ class POC(QWidget):
     def open_image(self, path):
         Popen(["./DS9/xpaset.exe", "-p", "ds9", "file", path,"zscale"], stdin=PIPE, stdout=PIPE, stderr=STDOUT)
 
-    def ds9_thread(self,progress_callback):
+    def ds9_process(self):
         xpans = Popen("./DS9/xpans.exe", stdin=PIPE, stdout=PIPE, stderr=STDOUT)
         ds9 = Popen("./DS9/ds9.exe", stdin=PIPE, stdout=PIPE, stderr=STDOUT)
     # ==============================================================
@@ -440,8 +440,9 @@ class POC(QWidget):
         self.btn_ds9 = QPushButton(self)
         self.btn_ds9.setIcon(QIcon("resources/icons/ds9.png"))
         self.btn_ds9.setIconSize(QSize(40, 40))
-        self.btn_ds9.clicked.connect(lambda: self.spawn_thread(
-            self.ds9_thread, None, None))
+        # self.btn_ds9.clicked.connect(lambda: self.spawn_thread(
+        #     self.ds9_process, None, None))
+        self.btn_ds9.clicked.connect(self.ds9_process)
         self.actns_layout.addWidget(self.btn_ds9)
         self.btn_ds9.setToolTip("Opens DS9")
 
