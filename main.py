@@ -177,13 +177,15 @@ class POC(QWidget):
 
         self.shutter_thread_flag = True
         self.gps_flag = True
-        self.shutter_thread_flag, self.gps_flag = False, False
-        self.spawn_thread(self.shutter_status_thread, None, None)
-        self.spawn_thread(self.gps_thread, None, None)
+        # self.spawn_thread(self.shutter_status_thread, None, None)
+        # self.spawn_thread(self.gps_thread, None, None)
+
+        # self.arc = ArcWrapper()
 
     def closeEvent(self, event):
         self.shutter_thread_flag = False
         self.gps_flag = False
+        self.threadpool.clear()
         print("closing")
 
     def setIcon(self):
@@ -198,19 +200,16 @@ class POC(QWidget):
 
     def spawn_thread(self, fn_name, fn_progress, fn_result_handler):
 
-        if fn_name.__name__ == "expose_thread":
-            self.btn_expose.setDisabled(True)
-
         if fn_name.__name__ == "get_src_info":
             self.source_info.clear()
             self.source_info.insertHtml("Getting details ....")
 
         worker = Worker(fn_name)
 
-        if fn_result_handler:
-            worker.signals.result.connect(fn_result_handler)
         if fn_progress:
             worker.signals.progress.connect(fn_progress)
+        if fn_result_handler:
+            worker.signals.result.connect(fn_result_handler)
 
         self.threadpool.start(worker)
 
@@ -221,41 +220,27 @@ class POC(QWidget):
     #  Exposure Functions
     # -----------------------------------------------------------
     def expose_handler(self):
-        self.progressbar_exp.setValue(0)
-        cmd = "api\\arcapi.exe PCIe -f api\\tim.lod -d 4 -c 6000 -r 6000"
-
-        if self.chk_btn_exp_time.checkState():
-            cmd += " -e " + self.input_exp_time.text()
-
-        self.spawn_thread(self.expose_thread(
-            cmd), self.expose_progress, self.expose_done)
+        self.btn_expose.setDisabled(True)
+        self.progressbar_exp.reset()    #The progress bar “rewinds” and shows no progress
+        self.spawn_thread(self.expose_thread, self.expose_progress, self.expose_done)
 
     def expose_thread(self, progress_callback):
-        cmd = "api\\arcapi.exe PCIe -f api\\tim.lod -d 4 -c 6000 -r 6000"
 
-        exp_time = 0
-        exp_time_flag = self.chk_btn_exp_time.checkState()
-        if exp_time_flag:
-            cmd += " -e " + self.input_exp_time.text()
-            exp_time = int(self.input_exp_time.text())
-
+        exp_time = exp_time = int(self.input_exp_time.text())
+        
         shutter = 0
         shutter = self.chk_btn_open_shutter.checkState()
         if  shutter:
-            cmd += " -o"
+            shutter = 1
         
         fits_file_name = self.input_img_dir.text()+"\\"+self.input_img_file_name.text()
-        cmd += " -fn " + fits_file_name
 
-        print(cmd)
+        # start exposure here
+        # self.arc.take_exposure(exp_time,fits_file_name,shutter)
 
-        # self.arc = ArcWrapper()
-
-        if exp_time_flag:
-            self.progressbar_exp.reset()
-            for i in range(exp_time,0,-1):
-                self.progressbar_exp_label.setText("Waiting: "+str(i))
-                sleep(1)
+        for i in range(exp_time,0,-1):
+            self.progressbar_exp_label.setText("Waiting: "+str(i))
+            sleep(1)
         self.progressbar_exp_label.setText("")
 
         # for line in self.arc.process.stdout:
@@ -287,15 +272,14 @@ class POC(QWidget):
     # -----------------------------------------------------------
 
     def power_off_controller(self):
-        arc = ArcWrapper("api\\arcapi.exe PCIe poweroff")
+        self.arc.poweroff()
         self.txt_logger.textCursor().insertHtml("Power Off Controller Done!<br>")
 
     def power_on_controller(self):
-        arc = ArcWrapper("api\\arcapi.exe PCIe poweron")
+        self.arc.poweron()
         self.txt_logger.textCursor().insertHtml("Power On Controller Done!<br>")
 
     def reset_controller(self):
-        arc = ArcWrapper("api\\arcapi.exe PCIe reset")
         self.txt_logger.textCursor().insertHtml("Reset Controller Done!<br>")
 
     # ==============================================================
@@ -490,9 +474,7 @@ class POC(QWidget):
         self.btn_expose = QPushButton(self, text="EXPOSE")
         self.btn_expose.setStyleSheet("color: red; font: bold")
         self.gridLayout_exp.addWidget(self.btn_expose, 4, 1)
-        self.btn_expose.clicked.connect(lambda: self.spawn_thread(
-            self.expose_thread, self.expose_progress, self.expose_done))
-        # self.btn_expose.clicked.connect(self.expose_handler)
+        self.btn_expose.clicked.connect(self.expose_handler)
 
         self.progressbar_exp = QProgressBar()
         self.progressbar_exp.setMinimum(0)
