@@ -249,7 +249,7 @@ class POC(QWidget):
 
         print(cmd)
 
-        self.arc = ArcWrapper()
+        # self.arc = ArcWrapper()
 
         if exp_time_flag:
             self.progressbar_exp.reset()
@@ -258,18 +258,18 @@ class POC(QWidget):
                 sleep(1)
         self.progressbar_exp_label.setText("")
 
-        for line in self.arc.process.stdout:
-            line = line.decode("utf-8")
-            if line.startswith("Error") or line.startswith("( CArcPCIe"):
-                progress_callback.emit(line)
-                break
-            progress_callback.emit(line)
+        # for line in self.arc.process.stdout:
+        #     line = line.decode("utf-8")
+        #     if line.startswith("Error") or line.startswith("( CArcPCIe"):
+        #         progress_callback.emit(line)
+        #         break
+        #     progress_callback.emit(line)
         
         for i in range(5):
             progress_callback.emit("Pixel Count: "+str(i))
             sleep(0.5)
 
-        progress_callback.emit(self.arc.read_stdout())
+        # progress_callback.emit(self.arc.read_stdout())
 
     def expose_progress(self, line):
         if line.startswith("Pixel Count:"):
