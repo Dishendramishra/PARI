@@ -285,6 +285,17 @@ class POC(QWidget):
     # ==============================================================
 
     # ==============================================================
+    #           DS9 Functions
+    # ==============================================================
+    def open_image(self, path):
+        Popen(["./DS9/xpaset.exe", "-p", "ds9", "file", path,"zscale"], stdin=PIPE, stdout=PIPE, stderr=STDOUT)
+
+    def ds9_thread(self,progress_callback):
+        xpans = Popen("./DS9/xpans.exe", stdin=PIPE, stdout=PIPE, stderr=STDOUT)
+        ds9 = Popen("./DS9/ds9.exe", stdin=PIPE, stdout=PIPE, stderr=STDOUT)
+    # ==============================================================
+
+    # ==============================================================
     #   Source API functions
     # ==============================================================
 
@@ -402,6 +413,7 @@ class POC(QWidget):
         self.btn_ctrl_setup.setIconSize(QSize(40, 40))
         self.actns_layout.addWidget(self.btn_ctrl_setup)
         # self.btn_ctrl_setup.clicked.connect(self.reset_controller)
+        self.btn_ctrl_setup.clicked.connect(lambda: self.open_image("C:\\Users\\dishendra\\Desktop\\POWL\\DS9\\andromeda.fits"))
         self.btn_ctrl_setup.setToolTip("Loads tim.lod file")
 
         self.btn_ctrl_rst = QPushButton(self)
@@ -428,8 +440,8 @@ class POC(QWidget):
         self.btn_ds9 = QPushButton(self)
         self.btn_ds9.setIcon(QIcon("resources/icons/ds9.png"))
         self.btn_ds9.setIconSize(QSize(40, 40))
-        self.btn_ds9.clicked.connect(
-            lambda: print(self.threadpool.findChildren()))
+        self.btn_ds9.clicked.connect(lambda: self.spawn_thread(
+            self.ds9_thread, None, None))
         self.actns_layout.addWidget(self.btn_ds9)
         self.btn_ds9.setToolTip("Opens DS9")
 
