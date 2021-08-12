@@ -445,6 +445,18 @@ class POC(QWidget):
         self.actns_layout.addWidget(self.btn_ds9)
         self.btn_ds9.setToolTip("Opens DS9")
 
+        self.btn_clr_array = QPushButton(self)
+        self.btn_clr_array.setIcon(QIcon("resources/icons/ClearArray.gif"))
+        self.btn_clr_array.setIconSize(QSize(40, 40))
+        self.actns_layout.addWidget(self.btn_clr_array)
+        self.btn_clr_array.setToolTip("Clear Camera Array")
+
+        self.btn_openshutter = QPushButton(self)
+        self.btn_openshutter.setIcon(QIcon("resources/icons/OpenShutter.gif"))
+        self.btn_openshutter.setIconSize(QSize(40, 40))
+        self.actns_layout.addWidget(self.btn_openshutter)
+        self.btn_openshutter.setToolTip("Open Camera Shutter")
+
         # self.actns_layout.set
 
         # self.actns_layout.setSizeConstraint(QLayout.SetFixedSize)
