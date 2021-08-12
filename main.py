@@ -249,7 +249,7 @@ class POC(QWidget):
     #  Exposure Functions
     # -----------------------------------------------------------
     def expose_handler(self):
-
+        self.progressbar_exp.setValue(0)
         cmd = "api\\arcapi.exe PCIe -f api\\tim.lod -d 4 -c 6000 -r 6000"
 
         if self.chk_btn_exp_time.checkState():
@@ -259,7 +259,6 @@ class POC(QWidget):
             cmd), self.expose_progress, self.expose_done)
 
     def expose_thread(self, progress_callback):
-        self.progressbar_exp.setValue(0)
         cmd = "api\\arcapi.exe PCIe -f api\\tim.lod -d 4 -c 6000 -r 6000"
 
         exp_time = 0
@@ -293,13 +292,17 @@ class POC(QWidget):
                 progress_callback.emit(line)
                 break
             progress_callback.emit(line)
+        
+        for i in range(5):
+            progress_callback.emit("Pixel Count: "+str(i))
+            sleep(0.5)
 
-        # progress_callback.emit(self.arc.read_stdout())
+        progress_callback.emit(self.arc.read_stdout())
 
     def expose_progress(self, line):
         if line.startswith("Pixel Count:"):
             self.line_count += 1
-            self.progressbar_exp.setValue(self.line_count/9)
+            self.progressbar_exp.setValue(self.line_count*20)
             print(line, end=" ")
             # print(self.line_count)
 
