@@ -183,6 +183,7 @@ class POC(QWidget):
         # self.arc = ArcWrapper()
 
     def closeEvent(self, event):
+        self.ds9_kill()
         self.shutter_thread_flag = False
         self.gps_flag = False
         self.threadpool.clear()
@@ -288,11 +289,15 @@ class POC(QWidget):
     #           DS9 Functions
     # ==============================================================
     def open_image(self, path):
-        Popen(["./DS9/xpaset.exe", "-p", "ds9", "file", path,"zscale"], stdin=PIPE, stdout=PIPE, stderr=STDOUT)
+        Popen(["./DS9/xpaset.exe", "-p", "ds9", "file", path,"zscale", "zoom","'to fit'"], stdin=PIPE, stdout=PIPE, stderr=STDOUT)
 
     def ds9_process(self):
-        xpans = Popen("./DS9/xpans.exe", stdin=PIPE, stdout=PIPE, stderr=STDOUT)
-        ds9 = Popen("./DS9/ds9.exe", stdin=PIPE, stdout=PIPE, stderr=STDOUT)
+        self.xpans = Popen("./DS9/xpans.exe", stdin=PIPE, stdout=PIPE, stderr=STDOUT)
+        self.ds9 = Popen("./DS9/ds9.exe", stdin=PIPE, stdout=PIPE, stderr=STDOUT)
+
+    def ds9_kill(self):
+        self.xpans.kill()
+        self.ds9.kill()
     # ==============================================================
 
     # ==============================================================
