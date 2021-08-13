@@ -10,7 +10,7 @@ class ArcWrapper():
         self.process = Popen("ArcAPI35Ex_1.exe", stdin=PIPE, stdout=PIPE, stderr=STDOUT)
 
     def write_stdin(self, cmd):
-        cmd = cmd+"\n"
+        cmd = str(cmd)+"\n"
         self.process.stdin.write(cmd.encode())
         self.process.stdin.flush()
 
@@ -37,8 +37,8 @@ class ArcWrapper():
         self.write_stdin(fits_filename)
         self.write_stdin(shutter_cfg)
 
-        self.read_stdout()
-        self.write_stdin("")
+        # self.read_stdout()
+        # self.write_stdin("")
 
     def open_shutter(self):
         self.write_stdin("3")
@@ -64,13 +64,13 @@ class ArcWrapper():
         self.write_stdin("8")
         self.write_stdin("")
 
-if __name__ == "__main__":
-  arc = ArcWrapper()
-  arc.apply_setup()
-  sleep(1)
-  arc.take_exposure("15","15sec_sh0_py.fits","1")
-#   arc.open_shutter()
-#   arc.close_shutter()
-  sleep(0.5)
-  arc.kill()
-  sleep(1)
+# if __name__ == "__main__":
+#   arc = ArcWrapper()
+#   arc.apply_setup()
+# #   sleep(1)
+#   arc.take_exposure(0,"test.fits",0)
+# #   arc.open_shutter()
+# #   arc.close_shutter()
+#   sleep(0.5)
+# #   arc.kill()
+# #   sleep(1)

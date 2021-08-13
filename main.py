@@ -180,7 +180,7 @@ class POC(QWidget):
         # self.spawn_thread(self.shutter_status_thread, None, None)
         # self.spawn_thread(self.gps_thread, None, None)
 
-        # self.arc = ArcWrapper()
+        self.arc = ArcWrapper()
 
     def closeEvent(self, event):
         self.ds9_kill()
@@ -230,39 +230,38 @@ class POC(QWidget):
         exp_time = exp_time = int(self.input_exp_time.text())
         
         shutter = 0
-        shutter = self.chk_btn_open_shutter.checkState()
-        if  shutter:
+        shutter_flag = self.chk_btn_open_shutter.checkState()
+        if  shutter_flag:
             shutter = 1
         
         fits_file_name = self.input_img_dir.text()+"\\"+self.input_img_file_name.text()
 
         # start exposure here
-        # self.arc.take_exposure(exp_time,fits_file_name,shutter)
+        print(exp_time, fits_file_name, shutter)
+        self.arc.take_exposure(exp_time,fits_file_name,shutter)
 
         for i in range(exp_time,0,-1):
             self.progressbar_exp_label.setText("Waiting: "+str(i))
             sleep(1)
         self.progressbar_exp_label.setText("")
 
-        # for line in self.arc.process.stdout:
-        #     line = line.decode("utf-8")
-        #     if line.startswith("Error") or line.startswith("( CArcPCIe"):
-        #         progress_callback.emit(line)
-        #         break
-        #     progress_callback.emit(line)
-        
-        for i in range(5):
-            progress_callback.emit("Pixel Count: "+str(i))
-            sleep(0.5)
+        for line in self.arc.process.stdout:
+            line = line.decode("utf-8")
+            if line.startswith("Error") or line.startswith("( CArcPCIe") or line.startswith("   Enter any key to"):
+                progress_callback.emit(line)
+                self.arc.write_stdin("")
+                break
+            progress_callback.emit(line)
 
         # progress_callback.emit(self.arc.read_stdout())
 
     def expose_progress(self, line):
+        line = line.strip()
+        print(line)
         if line.startswith("Pixel Count:"):
-            self.line_count += 1
-            self.progressbar_exp.setValue(self.line_count*20)
-            print(line, end=" ")
-            # print(self.line_count)
+            count = int(line[line.find(":")+2:])
+            self.progressbar_exp.setValue(int(count/43400000*100))
+
 
     def expose_done(self):
         print("owl thread completed!")
