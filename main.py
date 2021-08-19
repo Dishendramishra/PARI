@@ -180,7 +180,7 @@ class POC(QWidget):
         # self.spawn_thread(self.shutter_status_thread, None, None)
         # self.spawn_thread(self.gps_thread, None, None)
 
-        self.arc = ArcWrapper()
+        # self.arc = ArcWrapper()
 
     def closeEvent(self, event):
         self.ds9_kill()
@@ -288,7 +288,9 @@ class POC(QWidget):
     #           DS9 Functions
     # ==============================================================
     def open_image(self, path):
-        Popen(["./DS9/xpaset.exe", "-p", "ds9", "file", path,"zscale", "zoom","'to fit'"], stdin=PIPE, stdout=PIPE, stderr=STDOUT)
+        Popen(["./DS9/xpaset.exe", "-p", "ds9", "file", path], stdin=PIPE, stdout=PIPE, stderr=STDOUT)
+        # sleep(1)
+        # Popen(["./DS9/xpaset.exe", "-p", "ds9", "zoom","to fit"], stdin=PIPE, stdout=PIPE, stderr=STDOUT)
 
     def ds9_process(self):
         self.xpans = Popen("./DS9/xpans.exe", stdin=PIPE, stdout=PIPE, stderr=STDOUT)
@@ -417,7 +419,7 @@ class POC(QWidget):
         self.btn_ctrl_setup.setIconSize(QSize(40, 40))
         self.actns_layout.addWidget(self.btn_ctrl_setup)
         # self.btn_ctrl_setup.clicked.connect(self.reset_controller)
-        self.btn_ctrl_setup.clicked.connect(lambda: self.open_image("C:\\Users\\dishendra\\Desktop\\POWL\\DS9\\andromeda.fits"))
+        self.btn_ctrl_setup.clicked.connect(lambda: self.open_image("./DS9/andromeda.fits"))
         self.btn_ctrl_setup.setToolTip("Loads tim.lod file")
 
         self.btn_ctrl_rst = QPushButton(self)
