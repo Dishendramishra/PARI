@@ -8,6 +8,8 @@ from time import sleep
 import os
 from pathlib import Path
 
+from astropy.io import fits
+
 import traceback
 import sys
 
@@ -300,6 +302,14 @@ class POC(QWidget):
         self.xpans.kill()
         self.ds9.kill()
     # ==============================================================
+
+    # ==============================================================
+    #                   FITS Header Updation
+    # ==============================================================
+    def update_fits_header(self, filename):
+        data, header = fits.getdata(filename, header=True)
+        # header[""] = ""
+        fits.append(filename, data, header, overwrite=True, verify=False)
 
     # ==============================================================
     #   Source API functions
