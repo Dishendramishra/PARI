@@ -299,8 +299,11 @@ class POC(QWidget):
         self.ds9 = Popen("./DS9/ds9.exe", stdin=PIPE, stdout=PIPE, stderr=STDOUT)
 
     def ds9_kill(self):
-        self.xpans.kill()
-        self.ds9.kill()
+        try:
+            self.xpans.kill()
+            self.ds9.kill()
+        except:
+            print("DS9 not open.")
     # ==============================================================
 
     # ==============================================================
