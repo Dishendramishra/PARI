@@ -108,7 +108,6 @@ class POC(QWidget):
     def __init__(self):
         super().__init__()
 
-        self.line_count = 0
         self.EXP_TIMES = {
         "Dark"        :   "100",
         "Dark-Tung"   :   "600",
@@ -135,7 +134,7 @@ class POC(QWidget):
         self.dummy_line.setDisabled(True)
         # ===============================================================================
 
-        self.setWindowTitle("Paras2 Observation Console")
+        self.setWindowTitle("PARI")
         self.setGeometry(300, 200, 500, 350)
         self.setIcon()
         self.creategui()
@@ -182,14 +181,20 @@ class POC(QWidget):
         # self.spawn_thread(self.shutter_status_thread, None, None)
         # self.spawn_thread(self.gps_thread, None, None)
 
-        # self.arc = ArcWrapper()
+        self.arc = ArcWrapper()
 
     def closeEvent(self, event):
         self.ds9_kill()
+        try:
+            self.arc.kill()
+            print("ARCAPI: closed!")
+        except:
+            print("ARCAPI: error closing!")
+
         self.shutter_thread_flag = False
         self.gps_flag = False
         self.threadpool.clear()
-        print("closing")
+        print("closing PARI...")
 
     def setIcon(self):
         appIcon = QIcon()
@@ -216,6 +221,9 @@ class POC(QWidget):
 
         self.threadpool.start(worker)
 
+    def log(self, msg, color="black", end="<br>"):
+        self.txt_logger.textCursor().insertHtml("<font color='{}'>{}</font>{}".format(color,msg,end))
+
     # ==============================================================
     #   ARC API functions
     # ==============================================================
@@ -229,61 +237,91 @@ class POC(QWidget):
 
     def expose_thread(self, progress_callback):
 
-        exp_time = exp_time = int(self.input_exp_time.text())
+        exp_time = exp_time = float(self.input_exp_time.text())
         
         shutter = 0
         shutter_flag = self.chk_btn_open_shutter.checkState()
         if  shutter_flag:
             shutter = 1
         
-        fits_file_name = self.input_img_dir.text()+"\\"+self.input_img_file_name.text()
+        fits_file_name = self.input_img_dir.text()+"\\"+self.input_img_file_name.text().strip()
 
         # start exposure here
         print(exp_time, fits_file_name, shutter)
-        self.arc.take_exposure(exp_time,fits_file_name,shutter)
+        self.arc.take_exposure(exp_time, shutter, fits_file_name)
 
-        for i in range(exp_time,0,-1):
-            self.progressbar_exp_label.setText("Waiting: "+str(i))
-            sleep(1)
-        self.progressbar_exp_label.setText("")
+        # for i in range(int(exp_time),0,-1):
+        #     self.progressbar_exp_label.setText("Waiting: "+str(i))
+        #     sleep(1)
+        # self.progressbar_exp_label.setText("")
 
         for line in self.arc.process.stdout:
-            line = line.decode("utf-8")
-            if line.startswith("Error") or line.startswith("( CArcPCIe") or line.startswith("   Enter any key to"):
-                progress_callback.emit(line)
-                self.arc.write_stdin("")
-                break
+            line = line.decode("utf-8").strip()
+
             progress_callback.emit(line)
 
+            if line.startswith("Enter any key to"):
+                self.arc.write_stdin("")
+                break
         # progress_callback.emit(self.arc.read_stdout())
 
     def expose_progress(self, line):
-        line = line.strip()
         print(line)
-        if line.startswith("Pixel Count:"):
+
+        if line.startswith("Error") or line.startswith("( CArcPCIe"):
+            self.log("Exposure Error: ",end=" ")
+            self.log("failed!","red")
+
+        elif line.startswith("Pixel Count:"):
             count = int(line[line.find(":")+2:])
             self.progressbar_exp.setValue(int(count/43400000*100))
-
 
     def expose_done(self):
         print("owl thread completed!")
         self.progressbar_exp.setValue(100)
         self.btn_expose.setDisabled(False)
-        self.line_count = 0
 
     # -----------------------------------------------------------
 
     def power_off_controller(self):
-        self.arc.poweroff()
-        self.txt_logger.textCursor().insertHtml("Power Off Controller Done!<br>")
+        self.log("Power Off Controller: ",end=" ")
+        if self.arc.poweroff():
+            self.log("Error!","red")
+        else:
+            self.log("Done!","green")
 
     def power_on_controller(self):
-        self.arc.poweron()
-        self.txt_logger.textCursor().insertHtml("Power On Controller Done!<br>")
+        self.log("Power On Controller: ",end=" ")
+        if self.arc.poweron():
+            self.log("Error!","red")
+        else:
+            self.log("Done!","green")
 
     def reset_controller(self):
-        self.txt_logger.textCursor().insertHtml("Reset Controller Done!<br>")
+        pass
 
+    def open_shutter(self):
+        self.log("Opening Shutter: ",end=" ")
+        if self.arc.open_shutter():
+            self.log("Error!","red")
+        else:
+            self.log("Done!","green")
+        
+    def setup(self):
+        msgBox = QMessageBox()
+        msgBox.setText("Setup Controller ?")
+        # msgBox.setInformativeText("Proceed?")
+        msgBox.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
+        # msgBox.setDefaultButton(QMessageBox.Cancel)
+        ret = msgBox.exec_()    
+        
+        if ret == QMessageBox.Ok:
+            self.log("Controller Setup: ",end=" ")
+            if self.arc.apply_setup():
+                self.log("Error!","red")
+            else:
+                self.log("Done!","green")
+            
     # ==============================================================
 
     # ==============================================================
@@ -431,8 +469,8 @@ class POC(QWidget):
         self.btn_ctrl_setup.setIcon(QIcon("resources/icons/setup.ico"))
         self.btn_ctrl_setup.setIconSize(QSize(40, 40))
         self.actns_layout.addWidget(self.btn_ctrl_setup)
-        # self.btn_ctrl_setup.clicked.connect(self.reset_controller)
-        self.btn_ctrl_setup.clicked.connect(lambda: self.open_image("./DS9/andromeda.fits"))
+        self.btn_ctrl_setup.clicked.connect(self.setup)
+        # self.btn_ctrl_setup.clicked.connect(lambda: self.open_image("./DS9/andromeda.fits"))
         self.btn_ctrl_setup.setToolTip("Loads tim.lod file")
 
         self.btn_ctrl_rst = QPushButton(self)
@@ -475,6 +513,7 @@ class POC(QWidget):
         self.btn_openshutter.setIcon(QIcon("resources/icons/OpenShutter.gif"))
         self.btn_openshutter.setIconSize(QSize(40, 40))
         self.actns_layout.addWidget(self.btn_openshutter)
+        self.btn_openshutter.clicked.connect(self.open_shutter)
         self.btn_openshutter.setToolTip("Open Camera Shutter")
 
         # self.actns_layout.set
