@@ -20,6 +20,8 @@ import pynmea2
 
 from arcwrapper import ArcWrapper
 
+import fits_utilities
+
 if sys.platform == "linux" or sys.platform == "linux2":
     pass
 
@@ -287,7 +289,12 @@ class POC(QWidget):
             self.progressbar_exp.setValue(int(count/43400000*100))
 
     def expose_done(self):
-        self.open_image(self.input_img_dir.text()+"\\"+self.input_img_file_name.text().strip())
+        image_path = self.input_img_dir.text()+"\\"+self.input_img_file_name.text().strip()
+        image_path = image_path.replace("\\","/")
+        
+        fits_utilities.update_header(image_path, {"SOURCE":self.target_name.text.strip()})
+
+        self.open_image(image_path)
         self.readout_time_flag = False
         print("owl thread completed!")
         self.progressbar_exp.setValue(100)
