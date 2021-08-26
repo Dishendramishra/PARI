@@ -281,6 +281,11 @@ class POC(QWidget):
         self.progressbar_exp.setValue(100)
         self.btn_expose.setDisabled(False)
 
+    def readout_timer_thread(self, progress_callback):
+        pass
+
+    def readout_timer_progress(self, msg):
+        pass
     # -----------------------------------------------------------
 
     def power_off_controller(self):
@@ -553,6 +558,9 @@ class POC(QWidget):
 
         self.chk_btn_open_shutter = QCheckBox("Open Shutter", self)
         self.gridLayout_exp.addWidget(self.chk_btn_open_shutter, 3, 0)
+
+        self.lbl_readout_time = QLabel("Readout Time",self)
+        self.gridLayout_exp.addWidget(self.lbl_readout_time,4,0)
 
         self.btn_expose = QPushButton(self, text="EXPOSE")
         self.btn_expose.setStyleSheet("color: red; font: bold")
