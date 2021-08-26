@@ -292,7 +292,7 @@ class POC(QWidget):
         image_path = self.input_img_dir.text()+"\\"+self.input_img_file_name.text().strip()
         image_path = image_path.replace("\\","/")
         
-        fits_utilities.update_header(image_path, {"SOURCE":self.target_name.text.strip()})
+        fits_utilities.update_header(image_path, {"SOURCE":self.target_name.text().strip()})
 
         self.open_image(image_path)
         self.readout_time_flag = False
