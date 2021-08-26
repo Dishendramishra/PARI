@@ -308,9 +308,6 @@ class POC(QWidget):
         else:
             self.log("Done!","green")
 
-    def reset_controller(self):
-        pass
-
     def open_shutter(self):
         self.log("Opening Shutter: ",end=" ")
         if self.arc.open_shutter():
@@ -343,6 +340,13 @@ class POC(QWidget):
     def clear_array(self):
         self.log("Clear Camera Array: ",end=" ")
         if self.arc.clear_camera_array():
+            self.log("Error!","red")
+        else:
+            self.log("Done!","green")
+
+    def reset_controller(self):
+        self.log("Resetting Controller: ",end=" ")
+        if self.arc.reset_controller():
             self.log("Error!","red")
         else:
             self.log("Done!","green")
