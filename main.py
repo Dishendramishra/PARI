@@ -317,6 +317,13 @@ class POC(QWidget):
             self.log("Error!","red")
         else:
             self.log("Done!","green")
+
+    def close_shutter(self):
+        self.log("Closing Shutter: ",end=" ")
+        if self.arc.close_shutter():
+            self.log("Error!","red")
+        else:
+            self.log("Done!","green")
         
     def setup(self):
         msgBox = QMessageBox()
@@ -535,6 +542,13 @@ class POC(QWidget):
         self.actns_layout.addWidget(self.btn_openshutter)
         self.btn_openshutter.clicked.connect(self.open_shutter)
         self.btn_openshutter.setToolTip("Open Camera Shutter")
+
+        self.btn_closeshutter = QPushButton(self)
+        self.btn_closeshutter.setIcon(QIcon("resources/icons/CloseShutter.gif"))
+        self.btn_closeshutter.setIconSize(QSize(40, 40))
+        self.actns_layout.addWidget(self.btn_closeshutter)
+        self.btn_closeshutter.clicked.connect(self.close_shutter)
+        self.btn_closeshutter.setToolTip("Open Camera Shutter")
 
         # self.actns_layout.set
 
