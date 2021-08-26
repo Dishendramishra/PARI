@@ -291,6 +291,9 @@ class POC(QWidget):
             self.log("Exposure Error: ",end=" ")
             self.log("failed!","red")
 
+        elif line.startswith("Elapsed Time"):
+            self.lbl_readout_time.setText("Elapsed Time: {}".format(line[line.find(":")+2:]))
+
         elif line.startswith("Pixel Count:"):
 
             if not self.readout_time_flag:
