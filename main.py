@@ -488,35 +488,36 @@ class POC(QWidget):
         #                       Quick Actions
         # ===========================================================
         self.grp_box_actns = QGroupBox("Quick Actions")
-        self.actns_layout = QBoxLayout(QBoxLayout.LeftToRight)
+        # self.actns_layout = QBoxLayout(QBoxLayout.LeftToRight)
+        self.actns_layout = QGridLayout()
 
         # self.actns_layout.setAlignment(AlignTop)
 
         self.btn_ctrl_setup = QPushButton(self)
         self.btn_ctrl_setup.setIcon(QIcon("resources/icons/setup.ico"))
         self.btn_ctrl_setup.setIconSize(QSize(40, 40))
-        self.actns_layout.addWidget(self.btn_ctrl_setup)
+        self.actns_layout.addWidget(self.btn_ctrl_setup,0,0)
         self.btn_ctrl_setup.clicked.connect(self.setup)
         self.btn_ctrl_setup.setToolTip("Loads tim.lod file")
 
         self.btn_ctrl_rst = QPushButton(self)
         self.btn_ctrl_rst.setIcon(QIcon("resources/icons/ResetCtlr.gif"))
         self.btn_ctrl_rst.setIconSize(QSize(40, 40))
-        self.actns_layout.addWidget(self.btn_ctrl_rst)
+        self.actns_layout.addWidget(self.btn_ctrl_rst,0,1)
         self.btn_ctrl_rst.clicked.connect(self.reset_controller)
         self.btn_ctrl_rst.setToolTip("Resets Controller")
 
         self.btn_poweron = QPushButton(self)
         self.btn_poweron.setIcon(QIcon("resources/icons/PowerOn.gif"))
         self.btn_poweron.setIconSize(QSize(40, 40))
-        self.actns_layout.addWidget(self.btn_poweron)
+        self.actns_layout.addWidget(self.btn_poweron,0,2)
         self.btn_poweron.clicked.connect(self.power_on_controller)
         self.btn_poweron.setToolTip("Power On")
 
         self.btn_poweroff = QPushButton(self)
         self.btn_poweroff.setIcon(QIcon("resources/icons/PowerOff.gif"))
         self.btn_poweroff.setIconSize(QSize(40, 40))
-        self.actns_layout.addWidget(self.btn_poweroff)
+        self.actns_layout.addWidget(self.btn_poweroff,0,3)
         self.btn_poweroff.clicked.connect(self.power_off_controller)
         self.btn_poweroff.setToolTip("Power Off")
 
@@ -526,27 +527,27 @@ class POC(QWidget):
         # self.btn_ds9.clicked.connect(lambda: self.spawn_thread(
         #     self.ds9_process, None, None))
         self.btn_ds9.clicked.connect(self.ds9_process)
-        self.actns_layout.addWidget(self.btn_ds9)
+        self.actns_layout.addWidget(self.btn_ds9,1,0)
         self.btn_ds9.setToolTip("Opens DS9")
 
         self.btn_clr_array = QPushButton(self)
         self.btn_clr_array.setIcon(QIcon("resources/icons/ClearArray.gif"))
         self.btn_clr_array.setIconSize(QSize(40, 40))
-        self.actns_layout.addWidget(self.btn_clr_array)
+        self.actns_layout.addWidget(self.btn_clr_array,1,1)
         self.btn_clr_array.clicked.connect(self.clear_array)
         self.btn_clr_array.setToolTip("Clear Camera Array")
 
         self.btn_openshutter = QPushButton(self)
         self.btn_openshutter.setIcon(QIcon("resources/icons/OpenShutter.gif"))
         self.btn_openshutter.setIconSize(QSize(40, 40))
-        self.actns_layout.addWidget(self.btn_openshutter)
+        self.actns_layout.addWidget(self.btn_openshutter,1,2)
         self.btn_openshutter.clicked.connect(self.open_shutter)
         self.btn_openshutter.setToolTip("Open Camera Shutter")
 
         self.btn_closeshutter = QPushButton(self)
         self.btn_closeshutter.setIcon(QIcon("resources/icons/CloseShutter.gif"))
         self.btn_closeshutter.setIconSize(QSize(40, 40))
-        self.actns_layout.addWidget(self.btn_closeshutter)
+        self.actns_layout.addWidget(self.btn_closeshutter,1,3)
         self.btn_closeshutter.clicked.connect(self.close_shutter)
         self.btn_closeshutter.setToolTip("Open Camera Shutter")
 
