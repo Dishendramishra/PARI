@@ -286,6 +286,7 @@ class POC(QWidget):
             self.progressbar_exp.setValue(int(count/43400000*100))
 
     def expose_done(self):
+        self.open_image(self.input_img_dir.text()+"\\"+self.input_img_file_name.text().strip())
         self.readout_time_flag = False
         print("owl thread completed!")
         self.progressbar_exp.setValue(100)
@@ -331,6 +332,13 @@ class POC(QWidget):
                 self.log("Error!","red")
             else:
                 self.log("Done!","green")
+
+    def clear_array(self):
+        self.log("Clear Camera Array: ",end=" ")
+        if self.arc.clear_camera_array():
+            self.log("Error!","red")
+        else:
+            self.log("Done!","green")
             
     # ==============================================================
 
@@ -338,9 +346,11 @@ class POC(QWidget):
     #           DS9 Functions
     # ==============================================================
     def open_image(self, path):
+        # path = self.input_img_dir.text()+"\\"+self.input_img_file_name.text().strip()
+        path = path.replace("\\","/")
         Popen(["./DS9/xpaset.exe", "-p", "ds9", "file", path], stdin=PIPE, stdout=PIPE, stderr=STDOUT)
-        # sleep(1)
-        # Popen(["./DS9/xpaset.exe", "-p", "ds9", "zoom","to fit"], stdin=PIPE, stdout=PIPE, stderr=STDOUT)
+        Popen(["./DS9/xpaset.exe", "-p", "ds9", "zoom","to fit"], stdin=PIPE, stdout=PIPE, stderr=STDOUT)
+        Popen(["./DS9/xpaset.exe", "-p", "ds9", "zscale"], stdin=PIPE, stdout=PIPE, stderr=STDOUT)
 
     def ds9_process(self):
         self.xpans = Popen("./DS9/xpans.exe", stdin=PIPE, stdout=PIPE, stderr=STDOUT)
@@ -480,7 +490,6 @@ class POC(QWidget):
         self.btn_ctrl_setup.setIconSize(QSize(40, 40))
         self.actns_layout.addWidget(self.btn_ctrl_setup)
         self.btn_ctrl_setup.clicked.connect(self.setup)
-        # self.btn_ctrl_setup.clicked.connect(lambda: self.open_image("./DS9/andromeda.fits"))
         self.btn_ctrl_setup.setToolTip("Loads tim.lod file")
 
         self.btn_ctrl_rst = QPushButton(self)
@@ -517,6 +526,7 @@ class POC(QWidget):
         self.btn_clr_array.setIcon(QIcon("resources/icons/ClearArray.gif"))
         self.btn_clr_array.setIconSize(QSize(40, 40))
         self.actns_layout.addWidget(self.btn_clr_array)
+        self.btn_clr_array.clicked.connect(self.clear_array)
         self.btn_clr_array.setToolTip("Clear Camera Array")
 
         self.btn_openshutter = QPushButton(self)
