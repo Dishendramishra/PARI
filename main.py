@@ -182,6 +182,7 @@ class POC(QWidget):
         self.gps_flag = True
         self.readout_time_flag = False
         self.readout_starttime = None
+        self.exp_delay_flag = False
         # self.spawn_thread(self.shutter_status_thread, None, None)
         # self.spawn_thread(self.gps_thread, None, None)
 
@@ -250,6 +251,19 @@ class POC(QWidget):
             shutter = 1
         
         fits_file_name = self.input_img_dir.text()+"\\"+self.input_img_file_name.text().strip()
+
+        if self.chk_btn_exp_delay.checkState():
+            delay = int(float(self.input_exp_delay.text().strip()))
+            
+            self.exp_delay_flag = True
+            start = time() 
+
+            while self.exp_delay_flag:
+                current = int(time()-start)
+                if  current >= delay:
+                    self.exp_delay_flag = False
+                else:
+                    self.lbl_readout_time.setText("Waiting: {} secs".format(current+1))
 
         # start exposure here
         print(exp_time, fits_file_name, shutter)
