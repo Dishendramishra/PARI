@@ -281,11 +281,6 @@ class POC(QWidget):
         self.progressbar_exp.setValue(100)
         self.btn_expose.setDisabled(False)
 
-    def readout_timer_thread(self, progress_callback):
-        pass
-
-    def readout_timer_progress(self, msg):
-        pass
     # -----------------------------------------------------------
 
     def power_off_controller(self):
