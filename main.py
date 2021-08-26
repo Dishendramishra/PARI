@@ -1,3 +1,4 @@
+from posixpath import basename
 from PySide2.QtWidgets import *
 from PySide2.QtCore import *
 from PySide2.QtGui import *
@@ -5,7 +6,7 @@ from modules import tess_api
 from modules import simbad_api
 from subprocess import Popen, PIPE, STDOUT
 from time import sleep, time
-import os
+import os, re, glob
 from pathlib import Path
 
 from astropy.io import fits
@@ -806,10 +807,45 @@ class POC(QWidget):
     def load_settings(self):
         try:
             with open("settings.ini","r")  as settings_file:
-                self.input_img_dir.setText(settings_file.readline().strip())
-                self.input_img_file_name.setText(settings_file.readline().strip())
-        except:
-            print("load_settings(): settings.ini doesn't exists!")
+                dir = settings_file.readline().strip().replace("\\","/")
+                filename = settings_file.readline().strip().replace("\\","/")
+
+                last_num = list(re.finditer("\d+",filename))
+                if last_num:
+                    pattern = filename[:last_num[0].span()[0]]+"*.fits"
+                else:
+                    pattern = filename[:filename.find(".fits")]+"*.fits"  # fix this with re
+                
+                val = self.get_max_filename(dir+"/"+pattern)
+                if val == "single file":
+                    filename[:filename.find(".fits")]+"1.fits"
+                else:
+                    filename = filename[:val[0][0]]+str(int(val[1])+1)+".fits"
+                self.input_img_file_name.setText(filename)
+                self.input_img_dir.setText(dir)
+        except Exception as e:
+            print("load_settings(): ",e)
+
+    def get_max_filename(self, fn_pattern):
+        print("get_max_filename(): ",fn_pattern)
+        try:
+            files = [ os.path.basename(full_fn) for full_fn in glob.glob(fn_pattern)]
+            files = sorted(files)
+            print("get_max_filename(): ",files)
+            # max_num = re.findall("\d+",files[-1])[-1]
+
+            max_num = list(re.finditer("\d+",files[-1]))
+            if max_num:
+                max_num = max_num[0]
+            else:
+                return "single file"
+
+        except Exception as e:
+            print("get_max_filename(): ",e)
+            return "not found"
+        
+        # return max_num
+        return (max_num.span(), max_num[0])   # index tuple, match
 
 
 if __name__ == "__main__":
