@@ -186,6 +186,7 @@ class POC(QWidget):
         self.arc = ArcWrapper()
 
     def closeEvent(self, event):
+        self.save_settings()
         self.ds9_kill()
         try:
             self.arc.kill()
@@ -482,8 +483,16 @@ class POC(QWidget):
                     continue
 
     def img_file_options(self):
-        fname = QFileDialog.getExistingDirectory(
-            self, "Select Direcotry", str(Path.home())+"\\Pictures")
+        # fname = QFileDialog.getExistingDirectory(self, "Select Direcotry", str(Path.home())+"\\Pictures")
+        path = self.input_img_dir.text().strip()
+
+        file_dialog = QFileDialog()
+
+        if path:
+            fname = file_dialog.getExistingDirectory(self, "Select Direcotry", path)
+        else:
+            fname = file_dialog.getExistingDirectory(self, "Select Direcotry")
+
         self.input_img_dir.setText(fname)
 
     def creategui(self):
@@ -757,10 +766,26 @@ class POC(QWidget):
         self.gridLayout_status.addWidget(self.lbl_gps_status,2,0,1,3)
         self.grp_box_status.setLayout(self.gridLayout_status)
         # ===========================================================
+        self.load_settings()
 
     def logger_window(self):
         self.logger = QMainWindow()
         self.logger.show()
+
+    def save_settings(self):
+        try:
+            with open("settings.ini","w") as settings_file:
+                settings_file.writelines([self.input_img_dir.text(), "\n", self.input_img_file_name.text()])
+        except Exception as e :
+            print("save_settings(): ", e)
+
+    def load_settings(self):
+        try:
+            with open("settings.ini","r")  as settings_file:
+                self.input_img_dir.setText(settings_file.readline().strip())
+                self.input_img_file_name.setText(settings_file.readline().strip())
+        except:
+            print("load_settings(): settings.ini doesn't exists!")
 
 
 if __name__ == "__main__":
