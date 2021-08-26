@@ -70,6 +70,13 @@ class ArcWrapper():
         self.write_stdin("")
         return error
 
+    def reset_controller(self):
+        self.write_stdin("9")
+        error = self.read_stdout()
+        self.write_stdin("")
+        return error
+
+
     def clear_camera_array(self):
         self.write_stdin("7")
         error = self.read_stdout()
