@@ -4,7 +4,7 @@ from PySide2.QtGui import *
 from modules import tess_api
 from modules import simbad_api
 from subprocess import Popen, PIPE, STDOUT
-from time import sleep
+from time import sleep, time
 import os
 from pathlib import Path
 
@@ -178,6 +178,8 @@ class POC(QWidget):
 
         self.shutter_thread_flag = True
         self.gps_flag = True
+        self.readout_time_flag = False
+        self.readout_starttime = None
         # self.spawn_thread(self.shutter_status_thread, None, None)
         # self.spawn_thread(self.gps_thread, None, None)
 
@@ -273,10 +275,18 @@ class POC(QWidget):
             self.log("failed!","red")
 
         elif line.startswith("Pixel Count:"):
+
+            if not self.readout_time_flag:
+                self.readout_time_flag = True
+                self.readout_starttime = time()
+            
+            self.lbl_readout_time.setText("Readout Time: {}".format(round(time()-self.readout_starttime,2)))
+
             count = int(line[line.find(":")+2:])
             self.progressbar_exp.setValue(int(count/43400000*100))
 
     def expose_done(self):
+        self.readout_time_flag = False
         print("owl thread completed!")
         self.progressbar_exp.setValue(100)
         self.btn_expose.setDisabled(False)
@@ -554,7 +564,7 @@ class POC(QWidget):
         self.chk_btn_open_shutter = QCheckBox("Open Shutter", self)
         self.gridLayout_exp.addWidget(self.chk_btn_open_shutter, 3, 0)
 
-        self.lbl_readout_time = QLabel("Readout Time",self)
+        self.lbl_readout_time = QLabel("Readout Time: ",self)
         self.gridLayout_exp.addWidget(self.lbl_readout_time,4,0)
 
         self.btn_expose = QPushButton(self, text="EXPOSE")
