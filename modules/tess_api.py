@@ -6,20 +6,37 @@ import julian
 from colorama import init
 from termcolor import colored
 
+
+url = "https://exofop.ipac.caltech.edu/tess/gototoitid.php"
+payload = 'toi='
+headers = {
+'Origin': 'https://exofop.ipac.caltech.edu',
+'Content-Type': 'application/x-www-form-urlencoded',
+'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9'
+}
+
 def convert_to_jd(datetime_tuple):
     # time = (2019, 12, 31, 0, 0, 0)
     d = datetime.datetime(*datetime_tuple)
     return julian.to_jd(d)
 
-def get_planet_data(toi_names): 
-    url = "https://exofop.ipac.caltech.edu/tess/gototoitid.php"
-    payload = 'toi='
-    headers = {
-    'Origin': 'https://exofop.ipac.caltech.edu',
-    'Content-Type': 'application/x-www-form-urlencoded',
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9'
-    }
+def tic_from_toi(toi_name):
 
+    toi_name = toi_name.lower().replace("toi","")
+
+    try:
+        response = requests.request("POST", url, headers=headers, data = payload+toi_name)
+        soup = BeautifulSoup(response.content, 'html.parser')
+        tic_name = soup.find_all("div",class_="font-big")[0].text
+
+    except Exception as e:
+        print(e)
+        print("Failed for: TOI",toi_name)
+
+    return tic_name
+
+def get_planet_data(toi_names): 
+    
     data = []
     
     for name in toi_names:
@@ -29,7 +46,7 @@ def get_planet_data(toi_names):
             
             soup = BeautifulSoup(response.content, 'html.parser')
             table = soup.find("tbody")
-            tr = table.find_all("tr")[1]
+            # tr = table.find_all("tr")[1]
             td = table.find_all("td")
 
             response = response.text
@@ -61,3 +78,4 @@ def get_planet_data(toi_names):
 
 if __name__ == "__main__":
     print(get_planet_data(["toi1005"]))
+    print(tic_from_toi("1789"))
