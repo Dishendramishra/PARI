@@ -17,6 +17,8 @@ def update_header(filename,values_dict):
 
 def get_airmass(obj_str):
 
+  #  obj_str: example "M33" or tic id
+
   Gurushikar = {"Latitude" : 24.6531*u.deg, "Longitude": -72.7794*u.deg, "Altitude" : 1765*u.m}
 
   obj = SkyCoord.from_name(obj_str)
