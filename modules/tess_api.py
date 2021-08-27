@@ -9,7 +9,7 @@ from termcolor import colored
 import astropy.units as u
 from astropy.time import Time
 from astropy.coordinates import SkyCoord, EarthLocation, AltAz
-from datetime import datetime
+from datetime import datetime, timedelta
 
 url = "https://exofop.ipac.caltech.edu/tess/gototoitid.php"
 payload = 'toi='
