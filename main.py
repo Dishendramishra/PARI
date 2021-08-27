@@ -8,6 +8,7 @@ from subprocess import Popen, PIPE, STDOUT
 from time import sleep, time
 import os, re, glob
 from pathlib import Path
+from pprint import pprint
 
 from astropy.io import fits
 
@@ -19,9 +20,10 @@ import serial.tools.list_ports
 from time import sleep
 import pynmea2
 
+from datetime import datetime
 from arcwrapper import ArcWrapper
 
-import fits_utilities
+from modules import fits_utilities
 
 if sys.platform == "linux" or sys.platform == "linux2":
     pass
@@ -113,15 +115,15 @@ class POC(QWidget):
 
         self.EXP_TIMES = {
         "Dark"        :   "100",
-        "Dark-Tung"   :   "600",
-        "Tung-Dark"   :   "400",
-        "UAr-UAr"     :   "400",
-        "Dark-UAr"    :   "600",
-        "ThAr-ThAr"   :   "400",
-        "Dark-ThAr"   :   "1200",
-        "Star-UAr"    :   "1800",
-        "Star-ThAr"   :   "1800",
-        "Star-Dark"   :   "1800"}
+        "Dark+Tung"   :   "600",
+        "Tung+Dark"   :   "400",
+        "UAr+UAr"     :   "400",
+        "Dark+UAr"    :   "600",
+        "ThAr+ThAr"   :   "400",
+        "Dark+ThAr"   :   "1200",
+        "Star+UAr"    :   "1800",
+        "Star+ThAr"   :   "1800",
+        "Star+Dark"   :   "1800"}
 
 
         self.setMinimumWidth(846)
@@ -186,6 +188,7 @@ class POC(QWidget):
         self.exp_delay_flag = False
         # self.spawn_thread(self.shutter_status_thread, None, None)
         # self.spawn_thread(self.gps_thread, None, None)
+        self.exp_start_time = None
 
         self.arc = ArcWrapper()
 
@@ -241,6 +244,7 @@ class POC(QWidget):
         self.btn_expose.setDisabled(True)
         self.progressbar_exp.reset()    #The progress bar “rewinds” and shows no progress
         self.spawn_thread(self.expose_thread, self.expose_progress, self.expose_done)
+        self.exp_start_time = datetime.utcnow().strftime("%H:%M:%s")
 
     def expose_thread(self, progress_callback):
 
@@ -310,13 +314,52 @@ class POC(QWidget):
         image_path = self.input_img_dir.text()+"\\"+self.input_img_file_name.text().strip()
         image_path = image_path.replace("\\","/")
         
-        fits_utilities.update_header(image_path, {"SOURCE":self.target_name.text().strip()})
+        source_name = self.source_name.text().strip().lower()
+        if source_name.startswith("toi"):
+            source_name = tess_api.tic_from_toi(source_name)
+
+        source_details = tess_api.get_obj_details(source_name)
+        observers  = self.input_observers_name.toPlainText().strip().replace("\n","")
+
+        header = {
+            "OBS DATE": datetime.utcnow().strftime("%Y-%m-%d"),                     # Observation date                                
+            "OBS AIRM": round(source_details["airmass"],2),                         # Airmass                                         
+            "OBS HANG": "hh:mm:ss.ss",                                              # Hour angle                                      
+            "TRG EPOC": "2000",  # to be verified                                   # Epoch of object coordinates                     
+            "OBS TSYS": "UTC",                                                      # Default time system                             
+            "OBS TIME": self.exp_start_time,                                        # Observation start time (Log) 
+            "OBS PPL ": observers,  # Observers
+            "OBS FILE": "",     # => needs to be updated by pipeline
+            "OBS MJD ": "",     # as of now leave                                    # Mid-Observation MJD                             
+            "OBS TYPE": self.exp_type_name.currentText().strip().lower(),           # Observation type                                
+            "INS LAMP": "",                                                         # Calibration lamp                                
+            "OBSERVAT": "Gurushikhar Mt.Abu",                                       #                                                    
+            "TELESCOP": "2.5M",                                                     # Telescope                                       
+            "INSTRUME": "PARAS2",                                                   # Instrument                                      
+            "FILTER1 ": "None",                                                     # Filter 1                                        
+            "FILTER2 ": "None",                                                     # Filter 2                                        
+            "OBS ELEV": "1765",                                                     # Observatory Altitude (meters)                   
+            "OBS LAT ": "24.6531",                                                  # Observatory Latitude (degrees)                  
+            "OBS LONG": "72.7794",                                                  # Observatory Longitude (hours)                   
+            "TRG NAME": self.target_name.text().strip(),                            # Target name
+            "TRG ALPH": source_details["ra"],                                       # Target RA (hours)                               
+            "TRG DELT": source_details["dec"],                                      # Target DEC (degrees)                            
+            "TRG PMRA": "",     # => needs to be updated by pipeline                # Target Proper Motion in RA (mas/yr)             
+            "TRG PMDE": "",     # => needs to be updated by pipeline                # Target Proper Motion in DEC (mas/yr)            
+            "TRG TYPE": "",     # => needs to be updated by pipeline                # Target Stellar Type
+            "CCD EXPT": self.input_exp_time.text().strip(),                         # Exposure time in seconds
+            "CCD GAIN": "2",                                                        # Gain in electrons/adu
+            "CCD RDNS": "4.50000",                                                  # Read-out noise
+        }   
+        # pprint(header)
+        fits_utilities.update_header(image_path, header)
 
         self.open_image(image_path)
         self.readout_time_flag = False
         print("owl thread completed!")
         self.progressbar_exp.setValue(100)
         self.btn_expose.setDisabled(False)
+        self.exp_start_time = None
 
     # -----------------------------------------------------------
 
@@ -718,7 +761,7 @@ class POC(QWidget):
 
         self.exp_type_lbl = QLabel(self, text="Exposure Type:")
         self.exp_type_name = QComboBox(self)
-        self.exp_type_name.addItems(["Dark","Dark-Tung","Tung-Dark","UAr-UAr","Dark-UAr","ThAr-ThAr","Dark-ThAr","Star-UAr","Star-ThAr","Star-Dark"])
+        self.exp_type_name.addItems(["Dark","Dark+Tung","Tung+Dark","UAr+UAr","Dark+UAr","ThAr+ThAr","Dark+ThAr","Star+UAr","Star+ThAr","Star+Dark"])
         self.exp_type_name.currentTextChanged.connect(lambda: self.input_exp_time.setText(self.EXP_TIMES[self.exp_type_name.currentText()]))
         self.input_exp_time.setText(self.EXP_TIMES[self.exp_type_name.currentText()])
         self.gridLayout_observation.addWidget(self.exp_type_lbl, 1, 0)
@@ -730,12 +773,12 @@ class POC(QWidget):
         self.gridLayout_observation.addWidget(self.radec_lbl, 2, 0)
         self.gridLayout_observation.addWidget(self.radec_name, 2, 1)
 
-        self.observers_name_lbl = QLabel(self, text="Observers:")
-        self.observers_name_lbl.setAlignment(Qt.AlignTop)
-        self.observers_name_name = QTextEdit(self)
-        self.observers_name_name.setFixedHeight(50)
-        self.gridLayout_observation.addWidget(self.observers_name_lbl, 3, 0)
-        self.gridLayout_observation.addWidget(self.observers_name_name, 3, 1)
+        self.lbl_observers_name = QLabel(self, text="Observers:")
+        self.lbl_observers_name.setAlignment(Qt.AlignTop)
+        self.input_observers_name = QTextEdit(self)
+        self.input_observers_name.setFixedHeight(50)
+        self.gridLayout_observation.addWidget(self.lbl_observers_name, 3, 0)
+        self.gridLayout_observation.addWidget(self.input_observers_name, 3, 1)
 
         self.comment_lbl = QLabel(self, text="Comments")
         self.comment_lbl.setAlignment(Qt.AlignTop)
