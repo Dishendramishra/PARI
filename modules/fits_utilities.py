@@ -32,5 +32,7 @@ def get_airmass(obj_str):
   time = Time(datetime.utcnow()) - utcoffset
   obj_altz = obj.transform_to(AltAz(obstime=time,location=bear_mountain))
   airmass = obj_altz.secz
+
+  return airmass
   # print("Object Altitude: ", obj_altz.alt*u.deg)
   # print("Object Airmass : ", airmass)

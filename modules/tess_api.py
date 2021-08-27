@@ -33,7 +33,7 @@ def tic_from_toi(toi_name):
         print(e)
         print("Failed for: TOI",toi_name)
 
-    return tic_name
+    return "TIC"+tic_name
 
 def get_planet_data(toi_names): 
     
