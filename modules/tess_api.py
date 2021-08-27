@@ -6,6 +6,10 @@ import julian
 from colorama import init
 from termcolor import colored
 
+import astropy.units as u
+from astropy.time import Time
+from astropy.coordinates import SkyCoord, EarthLocation, AltAz
+from datetime import datetime
 
 url = "https://exofop.ipac.caltech.edu/tess/gototoitid.php"
 payload = 'toi='
@@ -76,6 +80,29 @@ def get_planet_data(toi_names):
     print()
     return data
 
-if __name__ == "__main__":
-    print(get_planet_data(["toi1005"]))
-    print(tic_from_toi("1789"))
+def get_obj_details(obj_str):
+  #  obj_str: example "M33" or tic id
+
+  obj_str = obj_str.strip().lower()
+  if obj_str.startswith("toi"):
+    obj_str = tic_from_toi(obj_str)
+
+  Gurushikar = {"Latitude" : 24.6531*u.deg, "Longitude": 72.7794*u.deg, "Altitude" : 1765*u.m}
+
+  obj = SkyCoord.from_name(obj_str)
+  
+  # bear_mountain = EarthLocation(lat=41.3*u.deg, lon=-74*u.deg, height=390*u.m)
+  bear_mountain = EarthLocation(lat=Gurushikar["Latitude"],
+                                lon=Gurushikar["Longitude"],
+                                height=Gurushikar["Altitude"],
+  )
+  time = Time(datetime.utcnow())        # utc time
+  obj_altz = obj.transform_to(AltAz(obstime=time,location=bear_mountain))
+  airmass = obj_altz.secz
+
+  return {"airmass":airmass.value, "ra": (obj.ra*u.deg).value, "dec":(obj.dec*u.deg).value}
+
+# if __name__ == "__main__":
+#     # print(get_planet_data(["toi1005"]))
+#     # print(tic_from_toi("1789"))
+#     print(get_obj_details("toi1789"))
