@@ -22,6 +22,7 @@ import pynmea2
 
 from datetime import datetime
 from arcwrapper import ArcWrapper
+from hashlib import sha256
 
 from modules import fits_utilities
 
@@ -108,7 +109,7 @@ class Worker(QRunnable):
             self.signals.finished.emit()  # Done
 
 
-class POC(QWidget):
+class PARI(QWidget):
 
     def __init__(self):
         super().__init__()
@@ -139,7 +140,7 @@ class POC(QWidget):
         self.dummy_line.setDisabled(True)
         # ===============================================================================
 
-        self.setWindowTitle("PARI")
+        self.setWindowTitle("PARI (Paras Aquisition and Readout Initiation)")
         self.setGeometry(300, 200, 500, 350)
         self.setIcon()
         self.creategui()
@@ -391,8 +392,73 @@ class POC(QWidget):
         else:
             self.log("Done!","green")
         
+    def setup_dialog(self):
+
+        def get_tim_location():
+            dialog = QFileDialog()
+            path = dialog.getOpenFileName(self, "Select File", "./api")[0]
+            # print("\npath: ",path)
+            return path
+
+        passwd, ok    = QInputDialog.getText(self,"Authorized","Enter Password")
+        passwd        = passwd.strip()
+        passwd_digest = sha256(passwd.encode()).digest()
+ 
+        if passwd_digest == sha256("".encode()).digest():
+
+            window = QWidget()
+            window.setWindowTitle("Setup Controller")
+            layout = QGridLayout() 
+
+            chk_btn_rst = QCheckBox("Reset Controller")
+            chk_btn_pwr = QCheckBox("Power On")
+            layout.addWidget(chk_btn_rst,0,0)
+            layout.addWidget(chk_btn_pwr,0,1)
+            chk_btn_rst.setChecked(True)
+            chk_btn_pwr.setChecked(True)
+            
+
+            chk_btn_tim        = QCheckBox("Tim Download")
+            input_tim_location = QLineEdit(os.getcwd().replace("\\","/")+"/api/tim.lod")
+            btn_tim_location   = QPushButton()
+            btn_tim_location.setIcon(QIcon("resources/icons/folder.gif"))
+            layout.addWidget(chk_btn_tim,1,0)
+            layout.addWidget(input_tim_location,1,1,1,3)
+            layout.addWidget(btn_tim_location,1,4)
+            chk_btn_tim.setChecked(True)
+            btn_tim_location.clicked.connect(lambda: input_tim_location.setText(get_tim_location()))
+
+
+            chk_btn_img = QCheckBox("Image Size")
+            lbl_rows    = QLabel(text="rows")
+            input_rows  = QLineEdit("6200")
+            lbl_cols    = QLabel(text="cols")
+            input_cols  = QLineEdit("7000")
+            layout.addWidget(chk_btn_img,2,0)
+            layout.addWidget(lbl_rows,2,1, Qt.AlignRight)
+            layout.addWidget(input_rows,2,2)
+            layout.addWidget(lbl_cols,2,3,Qt.AlignRight)
+            layout.addWidget(input_cols,2,4)
+            chk_btn_img.setChecked(True)
+
+            btn_apply = QPushButton("Apply")
+            btn_apply.setStyleSheet("color: red; font: bold")
+            layout.addWidget(btn_apply,3,1,1,2)
+            btn_apply.clicked.connect(self.setup)
+
+            window.setLayout(layout)
+            window.show()
+
+            window.exec_()
+        
+        else:
+            self.log("Setup Controller:",end=" ")
+            self.log("Incorrect Password!","red")
+
+
     def setup(self):
         msgBox = QMessageBox()
+        msgBox.setWindowTitle(" ")
         msgBox.setText("Setup Controller ?")
         # msgBox.setInformativeText("Proceed?")
         msgBox.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
@@ -578,7 +644,7 @@ class POC(QWidget):
         self.btn_ctrl_setup.setIcon(QIcon("resources/icons/setup.ico"))
         self.btn_ctrl_setup.setIconSize(QSize(40, 40))
         self.actns_layout.addWidget(self.btn_ctrl_setup,0,0)
-        self.btn_ctrl_setup.clicked.connect(self.setup)
+        self.btn_ctrl_setup.clicked.connect(self.setup_dialog)
         self.btn_ctrl_setup.setToolTip("Loads tim.lod file")
 
         self.btn_ctrl_rst = QPushButton(self)
@@ -893,9 +959,13 @@ class POC(QWidget):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
+
+    # style realted settings
     app.setStyle('Fusion')
     app.setStyleSheet(open("resources/styles/style.qss").read())
-    window = POC()
     app.setWindowIcon(QIcon("resources/icons/prl.png"))
+    
+    window = PARI()
+    window.show()
     app.exec_()
     sys.exit()
