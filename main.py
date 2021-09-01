@@ -508,7 +508,7 @@ class PARI(QWidget):
                 with open("setup.ini","r") as f:
                     settings_dict = json.loads(f.read())
 
-                    pprint(settings_dict)
+                    # pprint(settings_dict)
 
                     chk_btn_rst.setChecked(True) if settings_dict["CTRL_RST"] else None
                     chk_btn_pwr.setChecked(True) if settings_dict["PWR_ON"] else None
@@ -579,7 +579,7 @@ class PARI(QWidget):
         
         if ret == QMessageBox.Ok:
             self.log("Controller Setup: ",end=" ")
-            if self.arc.apply_setup():
+            if self.arc.apply_setup(settings_dict):
                 self.log("Error!","red")
             else:
                 self.log("Done!","green")
