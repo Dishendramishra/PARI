@@ -1,4 +1,5 @@
 from posixpath import basename
+from typing import Text
 from PySide2.QtWidgets import *
 from PySide2.QtCore import *
 from PySide2.QtGui import *
@@ -25,6 +26,7 @@ from arcwrapper import ArcWrapper
 from hashlib import sha256
 
 from modules import fits_utilities
+import json
 
 if sys.platform == "linux" or sys.platform == "linux2":
     pass
@@ -410,23 +412,22 @@ class PARI(QWidget):
             window.setWindowTitle("Setup Controller")
             layout = QGridLayout() 
 
+
             chk_btn_rst = QCheckBox("Reset Controller")
             chk_btn_pwr = QCheckBox("Power On")
             layout.addWidget(chk_btn_rst,0,0)
             layout.addWidget(chk_btn_pwr,0,1)
-            chk_btn_rst.setChecked(True)
-            chk_btn_pwr.setChecked(True)
             
 
             chk_btn_tim        = QCheckBox("Tim Download")
-            input_tim_location = QLineEdit(os.getcwd().replace("\\","/")+"/api/tim.lod")
+            input_tim_location = QLineEdit()
             btn_tim_location   = QPushButton()
             btn_tim_location.setIcon(QIcon("resources/icons/folder.gif"))
             layout.addWidget(chk_btn_tim,1,0)
             layout.addWidget(input_tim_location,1,1,1,3)
             layout.addWidget(btn_tim_location,1,4)
-            chk_btn_tim.setChecked(True)
             btn_tim_location.clicked.connect(lambda: input_tim_location.setText(get_tim_location()))
+            chk_btn_tim.clicked.connect(lambda: input_tim_location.setEnabled(chk_btn_tim.isChecked()))
 
 
             chk_btn_img = QCheckBox("Image Size")
@@ -439,28 +440,31 @@ class PARI(QWidget):
             layout.addWidget(input_rows,2,2)
             layout.addWidget(lbl_cols,2,3,Qt.AlignRight)
             layout.addWidget(input_cols,2,4)
-            chk_btn_img.setChecked(True)
+            chk_btn_img.clicked.connect(lambda : 
+                                            input_rows.setEnabled(chk_btn_img.isChecked()) or
+                                            input_cols.setEnabled(chk_btn_img.isChecked())
+                                        )
+
 
             lbl_readout_spd = QLabel(text="Readout Speed")
-            rd_btn_slw      = QRadioButton("SLW")
+            rd_btn_slw      = QRadioButton("SLOW")
             rd_btn_med      = QRadioButton("MED")
-            rd_btn_med.setChecked(True)
-            rd_btn_fst      = QRadioButton("FST")
+            rd_btn_fst      = QRadioButton("FAST")
             layout.addWidget(lbl_readout_spd,3,0)
             layout.addWidget(rd_btn_slw,3,1)
             layout.addWidget(rd_btn_med,3,2)
             layout.addWidget(rd_btn_fst,3,3)
             btn_grp_readout_spd = QButtonGroup()
-            btn_grp_readout_spd.addButton(rd_btn_slw)
-            btn_grp_readout_spd.addButton(rd_btn_med)
-            btn_grp_readout_spd.addButton(rd_btn_fst)
+            btn_grp_readout_spd.addButton(rd_btn_slw,0)
+            btn_grp_readout_spd.addButton(rd_btn_med,1)
+            btn_grp_readout_spd.addButton(rd_btn_fst,2)
 
-            lbl_sos = QLabel(text="Set Output Source")
+
+            lbl_sos = QLabel(text="Quad Readout")
             rd_btn_amp0 = QRadioButton()
             rd_btn_amp1 = QRadioButton()
             rd_btn_amp2 = QRadioButton()
             rd_btn_amp3 = QRadioButton()
-            rd_btn_amp3.setChecked(True)
             rd_btn_amp0.setIcon(QIcon("resources/icons/AMP_0.gif"))
             rd_btn_amp1.setIcon(QIcon("resources/icons/AMP_1.gif"))
             rd_btn_amp2.setIcon(QIcon("resources/icons/AMP_2.gif"))
@@ -470,22 +474,85 @@ class PARI(QWidget):
             rd_btn_amp2.setIconSize(QSize(64,64))
             rd_btn_amp3.setIconSize(QSize(64,64))
             btn_grp_sos = QButtonGroup()
-            btn_grp_sos.addButton(rd_btn_amp0)
-            btn_grp_sos.addButton(rd_btn_amp1)
-            btn_grp_sos.addButton(rd_btn_amp2)
-            btn_grp_sos.addButton(rd_btn_amp3)
-
-
+            btn_grp_sos.addButton(rd_btn_amp0,0)
+            btn_grp_sos.addButton(rd_btn_amp1,1)
+            btn_grp_sos.addButton(rd_btn_amp2,2)
+            btn_grp_sos.addButton(rd_btn_amp3,3)
             layout.addWidget(lbl_sos,4,0)
             layout.addWidget(rd_btn_amp0,4,1)
             layout.addWidget(rd_btn_amp1,4,2)
             layout.addWidget(rd_btn_amp2,4,3)
             layout.addWidget(rd_btn_amp3,4,4)
+            lbl_amp0 = QLabel("0")
+            lbl_amp1 = QLabel("1")
+            lbl_amp2 = QLabel("2")
+            lbl_amp3 = QLabel("3")
+            layout.addWidget(lbl_amp0,5,1, Qt.AlignCenter)
+            layout.addWidget(lbl_amp1,5,2, Qt.AlignCenter)
+            layout.addWidget(lbl_amp2,5,3, Qt.AlignCenter)
+            layout.addWidget(lbl_amp3,5,4, Qt.AlignCenter)
 
             btn_apply = QPushButton("Apply")
             btn_apply.setStyleSheet("color: red; font: bold")
-            layout.addWidget(btn_apply,5,1,1,2)
-            btn_apply.clicked.connect(self.setup)
+            layout.addWidget(btn_apply,6,1,1,2)
+            btn_apply.clicked.connect(lambda: self.setup({
+                                "CTRL_RST" : True if chk_btn_rst.isChecked() else False,
+                                "PWR_ON"   : True if chk_btn_pwr.isChecked() else False,
+                                "TIM"      : ( True if chk_btn_tim.isChecked() else False , input_tim_location.text() ),
+                                "IMG_SIZE" : ( True if chk_btn_img.isChecked() else False , int(input_rows.text()),int(input_cols.text())),
+                                "READ_SPD" : btn_grp_readout_spd.checkedId(),
+                                "QUAD"     : btn_grp_sos.checkedId()
+                            }))
+
+            try:
+                with open("setup.ini","r") as f:
+                    settings_dict = json.loads(f.read())
+
+                    pprint(settings_dict)
+
+                    chk_btn_rst.setChecked(True) if settings_dict["CTRL_RST"] else None
+                    chk_btn_pwr.setChecked(True) if settings_dict["PWR_ON"] else None
+                    
+                    
+                    chk_btn_tim.setChecked(True) if settings_dict["TIM"][0] else None
+                    input_tim_location.setText(settings_dict["TIM"][1])
+                    input_tim_location.setEnabled(False) if not settings_dict["TIM"][0] else None
+
+                    chk_btn_img.setChecked(True) if settings_dict["IMG_SIZE"][0] else None
+                    input_rows.setText(str(settings_dict["IMG_SIZE"][1]))
+                    input_cols.setText(str(settings_dict["IMG_SIZE"][2]))
+                    input_rows.setEnabled(False) if not settings_dict["IMG_SIZE"][0] else None
+                    input_cols.setEnabled(False) if not settings_dict["IMG_SIZE"][0] else None
+
+                    # { 0:"SLOW", 1:"MED", 2:"FAST"}
+                    if settings_dict["READ_SPD"] == 0:
+                        rd_btn_slw.setChecked(True)
+                    elif settings_dict["READ_SPD"] == 1:
+                        rd_btn_med.setChecked(True)
+                    elif settings_dict["READ_SPD"] == 2:
+                        rd_btn_fst.setChecked(True)
+
+                    if settings_dict["QUAD"] == 0:
+                        rd_btn_amp0.setChecked(True)
+                    elif settings_dict["QUAD"] == 1:
+                        rd_btn_amp1.setChecked(True)
+                    elif settings_dict["QUAD"] == 2:
+                        rd_btn_amp2.setChecked(True)
+                    elif settings_dict["QUAD"] == 3:
+                        rd_btn_amp3.setChecked(True)
+                    
+            except Exception as e:
+                print(e)
+                self.log("Setup Controller: ",end="")
+                self.log("no previous settings found!","red")
+                self.log("Setup Controller: Using Default Settings!",)
+                # chk_btn_rst.setChecked(True)
+                # chk_btn_pwr.setChecked(True)
+                # chk_btn_tim.setChecked(True)
+                # chk_btn_img.setChecked(True)
+                # rd_btn_med.setChecked(True)
+                # rd_btn_amp3.setChecked(True)
+                # input_tim_location.setText(os.getcwd().replace("\\","/")+"/api/tim.lod")
 
             window.setLayout(layout)
             window.show()
@@ -497,7 +564,11 @@ class PARI(QWidget):
             self.log("Incorrect Password!","red")
 
 
-    def setup(self):
+    def setup(self, settings_dict):
+        
+        with open("setup.ini","w") as f:          # saving setup contoller settings
+            f.write(json.dumps(settings_dict))
+
         msgBox = QMessageBox()
         msgBox.setWindowTitle(" ")
         msgBox.setText("Setup Controller ?")
