@@ -173,7 +173,7 @@ class PARI(QWidget):
 
         self.middle_pane.addWidget(self.grp_box_observation)
 
-        self.right_pane.addWidget(self.grp_box_status)
+        # self.right_pane.addWidget(self.grp_box_status)
         self.right_pane.addWidget(self.grp_box_logger)
 
         self.threadpool = QThreadPool()
@@ -355,7 +355,7 @@ class PARI(QWidget):
             "CCD RDNS": "4.50000",                                                  # Read-out noise
         }   
         # pprint(header)
-        fits_utilities.update_header(image_path, header)
+        # fits_utilities.update_header(image_path, header)
 
         self.open_image(image_path)
         self.readout_time_flag = False
