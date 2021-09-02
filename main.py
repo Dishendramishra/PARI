@@ -406,6 +406,9 @@ class PARI(QWidget):
         passwd        = passwd.strip()
         passwd_digest = sha256(passwd.encode()).digest()
  
+        if not ok:
+            return
+
         if passwd_digest == sha256("".encode()).digest():
 
             window = QWidget()
