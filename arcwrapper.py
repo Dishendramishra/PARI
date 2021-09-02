@@ -32,8 +32,18 @@ class ArcWrapper():
       self.read_stdout()
       self.process.kill()
 
-    def apply_setup(self):
-        self.write_stdin("1")
+    def apply_setup(self, settings_dict):
+        cmd = "{ctrl_rst} {pwr} {tim} {rows} {cols} {speed} {quad}".format(
+                                ctrl_rst  = 1 if settings_dict["CTRL_RST"] else 0,
+                                pwr       = 1 if settings_dict["PWR_ON"] else 0,
+                                tim       = settings_dict["TIM"][1],
+                                rows      = settings_dict["IMG_SIZE"][1],
+                                cols      = settings_dict["IMG_SIZE"][2],
+                                speed     = settings_dict["READ_SPD"],
+                                quad      = settings_dict["QUAD"],
+                                )
+
+        self.write_stdin("1 "+cmd)
         error = self.read_stdout()
         self.write_stdin("")
         return error
@@ -91,7 +101,14 @@ class ArcWrapper():
 
 # if __name__ == "__main__":
 #   arc = ArcWrapper()
-#   arc.apply_setup()
+#   arc.apply_setup({
+#                     "CTRL_RST": True, 
+#                     "PWR_ON": True,
+#                      "TIM": [True, "api/tim.lod"],
+#                      "IMG_SIZE": [True,6200,7000],
+#                      "READ_SPD": 1,
+#                      "QUAD": 3
+#                 })
 #   arc.poweron()
 #   arc.poweroff()
 #   arc.open_shutter()
