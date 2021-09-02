@@ -244,7 +244,13 @@ class PARI(QWidget):
     #  Exposure Functions
     # -----------------------------------------------------------
     def expose_handler(self):
+        try:
+            os.remove("exposure.dat")
+        except:
+            pass
+        
         self.btn_expose.setDisabled(True)
+        self.btn_abort.setEnabled(True)
         self.progressbar_exp.reset()    #The progress bar “rewinds” and shows no progress
         self.spawn_thread(self.expose_thread, self.expose_progress, self.expose_done)
         self.exp_start_time = datetime.utcnow().strftime("%H:%M:%s")
@@ -295,9 +301,14 @@ class PARI(QWidget):
     def expose_progress(self, line):
         print(line)
 
-        if line.startswith("Error") or line.startswith("( CArcPCIe"):
-            self.log("Exposure Error: ",end=" ")
-            self.log("failed!","red")
+        if line.startswith("Err") or line.startswith("( CArcDevice"):
+
+            if "Expose Aborted!" in line:
+                self.log("<b>Exposure Aborted !</b>","red")
+                self.log("<b>It is advised to Clear Camera Array.</b>", "blue")
+            else:
+                self.log("Exposure Error: ",end=" ")
+                self.log("failed!","red")
 
         elif line.startswith("Elapsed Time"):
             self.lbl_readout_time.setText("Elapsed Time: {}".format(line[line.find(":")+2:]))
@@ -317,43 +328,42 @@ class PARI(QWidget):
         image_path = self.input_img_dir.text()+"\\"+self.input_img_file_name.text().strip()
         image_path = image_path.replace("\\","/")
         
-        source_name = self.source_name.text().strip().lower()
-        if source_name.startswith("toi"):
-            source_name = tess_api.tic_from_toi(source_name)
+        # source_name = self.source_name.text().strip().lower()
+        # if source_name.startswith("toi"):
+            # source_name = tess_api.tic_from_toi(source_name)
+        # source_details = tess_api.get_obj_details(source_name)
+        # observers  = self.input_observers_name.toPlainText().strip().replace("\n","")
 
-        source_details = tess_api.get_obj_details(source_name)
-        observers  = self.input_observers_name.toPlainText().strip().replace("\n","")
-
-        header = {
-            "OBS DATE": datetime.utcnow().strftime("%Y-%m-%d"),                     # Observation date                                
-            "OBS AIRM": round(source_details["airmass"],2),                         # Airmass                                         
-            "OBS HANG": "hh:mm:ss.ss",                                              # Hour angle                                      
-            "TRG EPOC": "2000",  # to be verified                                   # Epoch of object coordinates                     
-            "OBS TSYS": "UTC",                                                      # Default time system                             
-            "OBS TIME": self.exp_start_time,                                        # Observation start time (Log) 
-            "OBS PPL ": observers,  # Observers
-            "OBS FILE": "",     # => needs to be updated by pipeline
-            "OBS MJD ": "",     # as of now leave                                    # Mid-Observation MJD                             
-            "OBS TYPE": self.exp_type_name.currentText().strip().lower(),           # Observation type                                
-            "INS LAMP": "",                                                         # Calibration lamp                                
-            "OBSERVAT": "Gurushikhar Mt.Abu",                                       #                                                    
-            "TELESCOP": "2.5M",                                                     # Telescope                                       
-            "INSTRUME": "PARAS2",                                                   # Instrument                                      
-            "FILTER1 ": "None",                                                     # Filter 1                                        
-            "FILTER2 ": "None",                                                     # Filter 2                                        
-            "OBS ELEV": "1765",                                                     # Observatory Altitude (meters)                   
-            "OBS LAT ": "24.6531",                                                  # Observatory Latitude (degrees)                  
-            "OBS LONG": "72.7794",                                                  # Observatory Longitude (hours)                   
-            "TRG NAME": self.target_name.text().strip(),                            # Target name
-            "TRG ALPH": source_details["ra"],                                       # Target RA (hours)                               
-            "TRG DELT": source_details["dec"],                                      # Target DEC (degrees)                            
-            "TRG PMRA": "",     # => needs to be updated by pipeline                # Target Proper Motion in RA (mas/yr)             
-            "TRG PMDE": "",     # => needs to be updated by pipeline                # Target Proper Motion in DEC (mas/yr)            
-            "TRG TYPE": "",     # => needs to be updated by pipeline                # Target Stellar Type
-            "CCD EXPT": self.input_exp_time.text().strip(),                         # Exposure time in seconds
-            "CCD GAIN": "2",                                                        # Gain in electrons/adu
-            "CCD RDNS": "4.50000",                                                  # Read-out noise
-        }   
+        # header = {
+        #     "OBS DATE": datetime.utcnow().strftime("%Y-%m-%d"),                     # Observation date                                
+        #     "OBS AIRM": round(source_details["airmass"],2),                         # Airmass                                         
+        #     "OBS HANG": "hh:mm:ss.ss",                                              # Hour angle                                      
+        #     "TRG EPOC": "2000",  # to be verified                                   # Epoch of object coordinates                     
+        #     "OBS TSYS": "UTC",                                                      # Default time system                             
+        #     "OBS TIME": self.exp_start_time,                                        # Observation start time (Log) 
+        #     "OBS PPL ": observers,  # Observers
+        #     "OBS FILE": "",     # => needs to be updated by pipeline
+        #     "OBS MJD ": "",     # as of now leave                                    # Mid-Observation MJD                             
+        #     "OBS TYPE": self.exp_type_name.currentText().strip().lower(),           # Observation type                                
+        #     "INS LAMP": "",                                                         # Calibration lamp                                
+        #     "OBSERVAT": "Gurushikhar Mt.Abu",                                       #                                                    
+        #     "TELESCOP": "2.5M",                                                     # Telescope                                       
+        #     "INSTRUME": "PARAS2",                                                   # Instrument                                      
+        #     "FILTER1 ": "None",                                                     # Filter 1                                        
+        #     "FILTER2 ": "None",                                                     # Filter 2                                        
+        #     "OBS ELEV": "1765",                                                     # Observatory Altitude (meters)                   
+        #     "OBS LAT ": "24.6531",                                                  # Observatory Latitude (degrees)                  
+        #     "OBS LONG": "72.7794",                                                  # Observatory Longitude (hours)                   
+        #     "TRG NAME": self.target_name.text().strip(),                            # Target name
+        #     "TRG ALPH": source_details["ra"],                                       # Target RA (hours)                               
+        #     "TRG DELT": source_details["dec"],                                      # Target DEC (degrees)                            
+        #     "TRG PMRA": "",     # => needs to be updated by pipeline                # Target Proper Motion in RA (mas/yr)             
+        #     "TRG PMDE": "",     # => needs to be updated by pipeline                # Target Proper Motion in DEC (mas/yr)            
+        #     "TRG TYPE": "",     # => needs to be updated by pipeline                # Target Stellar Type
+        #     "CCD EXPT": self.input_exp_time.text().strip(),                         # Exposure time in seconds
+        #     "CCD GAIN": "2",                                                        # Gain in electrons/adu
+        #     "CCD RDNS": "4.50000",                                                  # Read-out noise
+        # }   
         # pprint(header)
         # fits_utilities.update_header(image_path, header)
 
@@ -361,7 +371,8 @@ class PARI(QWidget):
         self.readout_time_flag = False
         print("owl thread completed!")
         self.progressbar_exp.setValue(100)
-        self.btn_expose.setDisabled(False)
+        self.btn_expose.setEnabled(True)
+        self.btn_abort.setDisabled(True)
         self.exp_start_time = None
 
     # -----------------------------------------------------------
@@ -601,6 +612,15 @@ class PARI(QWidget):
         else:
             self.log("Done!","green")
             
+    def abort_exposure(self):
+        self.btn_abort.setDisabled(True)
+        self.btn_expose.setEnabled(True)
+
+        with open("exposure.dat","w") as f:
+            f.write("1")
+            f.flush()
+
+        # self.arc.abort_exposure()
     # ==============================================================
 
     # ==============================================================
@@ -755,8 +775,15 @@ class PARI(QWidget):
 
         # self.actns_layout.setAlignment(AlignTop)
 
+        # self.btn_ctrl_setup = QPushButton(self)
+        # self.btn_ctrl_setup.setIcon(QIcon("resources/icons/setup.png"))
+        # self.btn_ctrl_setup.setIconSize(QSize(40, 40))
+        # self.actns_layout.addWidget(self.btn_ctrl_setup,0,0)
+        # self.btn_ctrl_setup.clicked.connect(self.setup_dialog)
+        # self.btn_ctrl_setup.setToolTip("Loads tim.lod file")
+
         self.btn_ctrl_setup = QPushButton(self)
-        self.btn_ctrl_setup.setIcon(QIcon("resources/icons/setup.ico"))
+        self.btn_ctrl_setup.setIcon(QIcon("resources/icons/setup.png"))
         self.btn_ctrl_setup.setIconSize(QSize(40, 40))
         self.actns_layout.addWidget(self.btn_ctrl_setup,0,0)
         self.btn_ctrl_setup.clicked.connect(self.setup_dialog)
@@ -854,19 +881,25 @@ class PARI(QWidget):
         self.lbl_readout_time = QLabel("Readout Time: ",self)
         self.gridLayout_exp.addWidget(self.lbl_readout_time,4,0)
 
+        self.btn_abort = QPushButton(self, text="ABORT")
+        self.btn_abort.setStyleSheet("color: red; font: bold")
+        self.gridLayout_exp.addWidget(self.btn_abort, 5, 0)
+        self.btn_abort.clicked.connect(self.abort_exposure)
+        self.btn_abort.setEnabled(False)
+
         self.btn_expose = QPushButton(self, text="EXPOSE")
-        self.btn_expose.setStyleSheet("color: red; font: bold")
-        self.gridLayout_exp.addWidget(self.btn_expose, 4, 1)
+        self.btn_expose.setStyleSheet("color: blue; font: bold")
+        self.gridLayout_exp.addWidget(self.btn_expose, 5, 1)
         self.btn_expose.clicked.connect(self.expose_handler)
 
         self.progressbar_exp = QProgressBar()
         self.progressbar_exp.setMinimum(0)
         self.progressbar_exp.setMaximum(100)
         self.progressbar_exp.setValue(0)
-        self.gridLayout_exp.addWidget(self.progressbar_exp, 5, 0, 1, 2)
+        self.gridLayout_exp.addWidget(self.progressbar_exp, 6, 0, 1, 2)
 
         self.progressbar_exp_label = QLabel("", self)
-        self.gridLayout_exp.addWidget(self.progressbar_exp_label, 5, 0, 1, 2, Qt.AlignCenter)
+        self.gridLayout_exp.addWidget(self.progressbar_exp_label, 6, 0, 1, 2, Qt.AlignCenter)
 
         # self.gridLayout_exp.setSizeConstraint(QLayout.SetFixedSize)
         self.grp_box_exp.setLayout(self.gridLayout_exp)

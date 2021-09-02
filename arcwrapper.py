@@ -86,7 +86,6 @@ class ArcWrapper():
         self.write_stdin("")
         return error
 
-
     def clear_camera_array(self):
         self.write_stdin("7")
         error = self.read_stdout()
