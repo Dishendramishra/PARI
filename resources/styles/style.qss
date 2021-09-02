@@ -12,3 +12,6 @@ QGroupBox {
     subcontrol-position: top left;
     padding: 0 3px 0 3px;
   }
+  QPushButton:hover{
+    background-color : lightblue;
+  }
