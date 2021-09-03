@@ -6,7 +6,7 @@ from PySide2.QtGui import *
 from modules import tess_api
 from modules import simbad_api
 from subprocess import Popen, PIPE, STDOUT
-from time import sleep, time
+from time import perf_counter, sleep, time
 import os, re, glob
 from pathlib import Path
 from pprint import pprint
@@ -243,70 +243,65 @@ class PARI(QWidget):
 
     #  Exposure Functions
     # -----------------------------------------------------------
-   
-    def expose(self):
-        if self.chk_btn_exp_multi.isChecked():
-            exp_numbs = int(self.input_exp_multi.text())
-            for i in range(exp_numbs):
-                self.expose_handler()
-        else:
-            self.expose_handler()
 
     def expose_handler(self):
         try:
             os.remove("exposure.dat")
         except:
             pass
-        
-        self.handle_fits_filename()
+
         self.btn_expose.setDisabled(True)
         self.btn_abort.setEnabled(True)
         self.progressbar_exp.reset()    #The progress bar “rewinds” and shows no progress
-        self.spawn_thread(self.expose_thread, self.expose_progress, self.expose_done)
-        self.exp_start_time = datetime.utcnow().strftime("%H:%M:%s")
+        self.spawn_thread(self.expose_thread, self.expose_progress, None)
+        self.exp_start_time = datetime.utcnow().strftime("%H:%M:%S")
 
     def expose_thread(self, progress_callback):
 
         exp_time = exp_time = float(self.input_exp_time.text())
         
-        shutter = 0 if self.chk_btn_open_shutter.checkState() else 1
+        shutter = 1 if self.chk_btn_open_shutter.checkState() else 0
         
-        fits_file_name = self.lbl_img_fn_val.text().strip()
+        for i in range(int(self.input_exp_multi.text())):
 
-        if self.chk_btn_exp_delay.checkState():
-            delay = int(self.input_exp_delay.text().strip())
-            
-            self.exp_delay_flag = True
-            start = time() 
+            self.handle_fits_filename()
+            fits_file_name = self.input_img_dir.text().strip()+"/"+self.lbl_img_fn_val.text().strip()
 
-            while self.exp_delay_flag:
-                current = int(time()-start)
-                if  current >= delay:
-                    self.exp_delay_flag = False
-                else:
-                    self.lbl_readout_time.setText("Waiting: {} secs".format(current+1))
+            if self.chk_btn_exp_delay.checkState():
+                delay = int(self.input_exp_delay.text().strip())
+                
+                self.exp_delay_flag = True
+                start = time() 
 
-        # start exposure here
-        print(exp_time, fits_file_name, shutter)
-        self.arc.take_exposure(exp_time, shutter, fits_file_name)
+                while self.exp_delay_flag:
+                    current = int(time()-start)
+                    if  current >= delay:
+                        self.exp_delay_flag = False
+                    else:
+                        self.lbl_readout_time.setText("Waiting: {} secs".format(current+1))
 
-        # for i in range(int(exp_time),0,-1):
-        #     self.progressbar_exp_label.setText("Waiting: "+str(i))
-        #     sleep(1)
-        # self.progressbar_exp_label.setText("")
+            # start exposure here
+            print(exp_time, fits_file_name, shutter)
+            self.arc.take_exposure(exp_time, shutter, fits_file_name)
 
-        for line in self.arc.process.stdout:
-            line = line.decode("utf-8").strip()
+            # for i in range(int(exp_time),0,-1):
+            #     self.progressbar_exp_label.setText("Waiting: "+str(i))
+            #     sleep(1)
+            # self.progressbar_exp_label.setText("")
 
-            progress_callback.emit(line)
+            for line in self.arc.process.stdout:
+                line = line.decode("utf-8").strip()
 
-            if line.startswith("Enter any key to"):
-                self.arc.write_stdin("")
-                break
-        # progress_callback.emit(self.arc.read_stdout())
+                progress_callback.emit(line)
+
+                if line.startswith("Enter any key to"):
+                    self.arc.write_stdin("")
+                    self.expose_done()
+                    break
+            # progress_callback.emit(self.arc.read_stdout())
 
     def expose_progress(self, line):
-        print(line)
+        # print(line)
 
         if line.startswith("Err") or line.startswith("( CArcDevice"):
 
@@ -633,7 +628,6 @@ class PARI(QWidget):
     #           DS9 Functions
     # ==============================================================
     def open_image(self, path):
-        # path = self.input_img_dir.text()+"\\"+self.input_img_file_name.text().strip()
         path = path.replace("\\","/")
         Popen(["./DS9/xpaset.exe", "-p", "ds9", "file", path], stdin=PIPE, stdout=PIPE, stderr=STDOUT)
         Popen(["./DS9/xpaset.exe", "-p", "ds9", "zoom","to fit"], stdin=PIPE, stdout=PIPE, stderr=STDOUT)
@@ -876,7 +870,7 @@ class PARI(QWidget):
         self.input_exp_delay.setValidator(QIntValidator())
 
         self.chk_btn_exp_multi = QCheckBox("Multiple Exposure", self)
-        self.input_exp_multi = QLineEdit(self)
+        self.input_exp_multi = QLineEdit(self,text="1")
         self.input_exp_multi.setDisabled(True)
         self.chk_btn_exp_multi.clicked.connect(
             lambda: self.input_exp_multi.setDisabled(not self.chk_btn_exp_multi.isChecked()))
@@ -899,7 +893,7 @@ class PARI(QWidget):
         self.btn_expose = QPushButton(self, text="EXPOSE")
         self.btn_expose.setStyleSheet("color: blue; font: bold")
         self.gridLayout_exp.addWidget(self.btn_expose, 5, 1)
-        self.btn_expose.clicked.connect(self.expose)
+        self.btn_expose.clicked.connect(self.expose_handler)
 
         self.progressbar_exp = QProgressBar()
         self.progressbar_exp.setMinimum(0)
@@ -1092,52 +1086,45 @@ class PARI(QWidget):
     def save_settings(self):
         try:
             with open("settings.ini","w") as settings_file:
-                settings_file.writelines([self.input_img_dir.text(), "\n", self.input_img_file_name.text()])
+                settings_file.writelines([self.input_img_dir.text(),    "\n", 
+                                          self.input_img_prefix.text(), "\n",
+                                          self.input_img_suffix.text(), "\n",
+                                          ])
         except Exception as e :
             print("save_settings(): ", e)
 
     def load_settings(self):
         try:
             with open("settings.ini","r")  as settings_file:
-                dir = settings_file.readline().strip().replace("\\","/")
-                filename = settings_file.readline().strip().replace("\\","/")
+                dir, prefix, suffix = [ x.strip() for x in  settings_file.readlines()]
 
-                last_num = list(re.finditer("\d+",filename))
-                if last_num:
-                    pattern = filename[:last_num[0].span()[0]]+"*.fits"
-                else:
-                    pattern = filename[:filename.find(".fits")]+"*.fits"  # fix this with re
-                
-                val = self.get_max_filename(dir+"/"+pattern)
-                if val == "single file":
-                    filename[:filename.find(".fits")]+"1.fits"
-                else:
-                    filename = filename[:val[0][0]]+str(int(val[1])+1)+".fits"
-                self.input_img_file_name.setText(filename)
-                self.input_img_dir.setText(dir)
+                self.input_img_prefix.setText(prefix)
+                self.input_img_suffix.setText(suffix)
+                self.lbl_img_fn_val.setText(prefix+suffix+".fits")
+                self.input_img_dir.setText(dir.strip())
         except Exception as e:
             print("load_settings(): ",e)
 
-    def get_max_filename(self, fn_pattern):
-        print("get_max_filename(): ",fn_pattern)
-        try:
-            files = [ os.path.basename(full_fn) for full_fn in glob.glob(fn_pattern)]
-            files = sorted(files)
-            print("get_max_filename(): ",files)
-            # max_num = re.findall("\d+",files[-1])[-1]
+    # def get_max_filename(self, fn_pattern):
+    #     print("get_max_filename(): ",fn_pattern)
+    #     try:
+    #         files = [ os.path.basename(full_fn) for full_fn in glob.glob(fn_pattern)]
+    #         files = sorted(files)
+    #         print("get_max_filename(): ",files)
+    #         # max_num = re.findall("\d+",files[-1])[-1]
 
-            max_num = list(re.finditer("\d+",files[-1]))
-            if max_num:
-                max_num = max_num[0]
-            else:
-                return "single file"
+    #         max_num = list(re.finditer("\d+",files[-1]))
+    #         if max_num:
+    #             max_num = max_num[0]
+    #         else:
+    #             return "single file"
 
-        except Exception as e:
-            print("get_max_filename(): ",e)
-            return "not found"
+    #     except Exception as e:
+    #         print("get_max_filename(): ",e)
+    #         return "not found"
         
-        # return max_num
-        return (max_num.span(), max_num[0])   # index tuple, match
+    #     # return max_num
+    #     return (max_num.span(), max_num[0])   # index tuple, match
 
     def about_dialog(self):
         msg = "PARI"
@@ -1173,6 +1160,7 @@ class PARI(QWidget):
             flag = True
 
         if flag:
+            self.input_img_suffix.setText(str(i).zfill(len(suffix)))
             self.log("Exposure: ",end="")
             self.log(f'Using filename <span style="color:green">{filename}</span> \
                     since <span style="color:red">{old_filename}</span> already exits!')
