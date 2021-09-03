@@ -858,6 +858,7 @@ class PARI(QWidget):
             lambda: self.input_exp_time.setDisabled(not self.chk_btn_exp_time.isChecked()))
         self.gridLayout_exp.addWidget(self.chk_btn_exp_time, 0, 0)
         self.gridLayout_exp.addWidget(self.input_exp_time, 0, 1)
+        self.input_exp_time.setValidator(QDoubleValidator())
 
         self.chk_btn_exp_delay = QCheckBox("Delay Exposure(sec)", self)
         self.input_exp_delay = QLineEdit(self)
@@ -866,6 +867,7 @@ class PARI(QWidget):
             lambda: self.input_exp_delay.setDisabled(not self.chk_btn_exp_delay.isChecked()))
         self.gridLayout_exp.addWidget(self.chk_btn_exp_delay, 1, 0)
         self.gridLayout_exp.addWidget(self.input_exp_delay, 1, 1)
+        self.input_exp_delay.setValidator(QIntValidator())
 
         self.chk_btn_exp_multi = QCheckBox("Multiple Exposure", self)
         self.input_exp_multi = QLineEdit(self)
@@ -874,6 +876,7 @@ class PARI(QWidget):
             lambda: self.input_exp_multi.setDisabled(not self.chk_btn_exp_multi.isChecked()))
         self.gridLayout_exp.addWidget(self.chk_btn_exp_multi, 2, 0)
         self.gridLayout_exp.addWidget(self.input_exp_multi, 2, 1)
+        self.input_exp_multi.setValidator(QIntValidator())
 
         self.chk_btn_open_shutter = QCheckBox("Open Shutter", self)
         self.gridLayout_exp.addWidget(self.chk_btn_open_shutter, 3, 0)
