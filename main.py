@@ -243,12 +243,22 @@ class PARI(QWidget):
 
     #  Exposure Functions
     # -----------------------------------------------------------
+   
+    def expose(self):
+        if self.chk_btn_exp_multi.isChecked():
+            exp_numbs = int(self.input_exp_multi.text())
+            for i in range(exp_numbs):
+                self.expose_handler()
+        else:
+            self.expose_handler()
+
     def expose_handler(self):
         try:
             os.remove("exposure.dat")
         except:
             pass
         
+        self.handle_fits_filename()
         self.btn_expose.setDisabled(True)
         self.btn_abort.setEnabled(True)
         self.progressbar_exp.reset()    #The progress bar “rewinds” and shows no progress
@@ -259,15 +269,12 @@ class PARI(QWidget):
 
         exp_time = exp_time = float(self.input_exp_time.text())
         
-        shutter = 0
-        shutter_flag = self.chk_btn_open_shutter.checkState()
-        if  shutter_flag:
-            shutter = 1
+        shutter = 0 if self.chk_btn_open_shutter.checkState() else 1
         
-        fits_file_name = self.input_img_dir.text()+"\\"+self.input_img_file_name.text().strip()
+        fits_file_name = self.lbl_img_fn_val.text().strip()
 
         if self.chk_btn_exp_delay.checkState():
-            delay = int(float(self.input_exp_delay.text().strip()))
+            delay = int(self.input_exp_delay.text().strip())
             
             self.exp_delay_flag = True
             start = time() 
@@ -325,8 +332,7 @@ class PARI(QWidget):
             self.progressbar_exp.setValue(int(count/43400000*100))
 
     def expose_done(self):
-        image_path = self.input_img_dir.text()+"\\"+self.input_img_file_name.text().strip()
-        image_path = image_path.replace("\\","/")
+        image_path = self.input_img_dir.text()+"/"+self.lbl_img_fn_val.text().strip()
         
         # source_name = self.source_name.text().strip().lower()
         # if source_name.startswith("toi"):
@@ -893,7 +899,7 @@ class PARI(QWidget):
         self.btn_expose = QPushButton(self, text="EXPOSE")
         self.btn_expose.setStyleSheet("color: blue; font: bold")
         self.gridLayout_exp.addWidget(self.btn_expose, 5, 1)
-        self.btn_expose.clicked.connect(self.expose_handler)
+        self.btn_expose.clicked.connect(self.expose)
 
         self.progressbar_exp = QProgressBar()
         self.progressbar_exp.setMinimum(0)
@@ -919,18 +925,39 @@ class PARI(QWidget):
         self.input_img_dir = QLineEdit(
             self, text=str(Path.home())+"\\Pictures")
         self.input_img_dir.setReadOnly(True)
-        self.gridLayout_img_file_ops.addWidget(self.input_img_dir, 0, 1)
+        self.gridLayout_img_file_ops.addWidget(self.input_img_dir, 0, 1,1,2)
 
         self.btn_img_dir = QPushButton(self)
         self.btn_img_dir.setIcon(QIcon("resources/icons/folder.gif"))
         self.btn_img_dir.clicked.connect(self.img_file_options)
-        self.gridLayout_img_file_ops.addWidget(self.btn_img_dir, 0, 2)
+        self.gridLayout_img_file_ops.addWidget(self.btn_img_dir, 0, 3)
 
-        self.lbl_img_file_name = QLabel(self, text="File")
+        self.lbl_img_file_name = QLabel(self, text="Filename:")
         self.gridLayout_img_file_ops.addWidget(self.lbl_img_file_name, 1, 0)
 
-        self.input_img_file_name = QLineEdit(self, text="image.fits")
-        self.gridLayout_img_file_ops.addWidget(self.input_img_file_name, 1, 1)
+        self.lbl_img_fn_val = QLabel(self)
+        self.gridLayout_img_file_ops.addWidget(self.lbl_img_fn_val, 1, 1, 1, 3)
+        self.lbl_img_fn_val.setStyleSheet("color: blue;")
+
+        self.lbl_img_prefix = QLabel(self, text="Prefix")
+        self.gridLayout_img_file_ops.addWidget(self.lbl_img_prefix, 2, 0, Qt.AlignRight)
+        self.input_img_prefix = QLineEdit(self, text="a")
+        self.gridLayout_img_file_ops.addWidget(self.input_img_prefix, 2, 1)
+        self.input_img_prefix.setValidator(QRegExpValidator(QRegExp("\w*")))
+        self.input_img_prefix.setFixedWidth(60)
+
+        self.lbl_img_suffix = QLabel(self, text="Sufix")
+        self.gridLayout_img_file_ops.addWidget(self.lbl_img_suffix, 2, 2,Qt.AlignRight)
+        self.input_img_suffix = QLineEdit(self,text="0000")
+        self.gridLayout_img_file_ops.addWidget(self.input_img_suffix, 2, 3)
+        self.input_img_suffix.setValidator(QIntValidator())
+        self.input_img_suffix.setFixedWidth(60)
+
+        self.lbl_img_fn_val.setText(self.input_img_prefix.text().strip()+\
+                                    self.input_img_suffix.text().strip()+".fits")
+
+        self.input_img_prefix.textEdited.connect(self.update_img_filename)
+        self.input_img_suffix.textEdited.connect(self.update_img_filename)
 
         # self.gridLayout_img_file_ops.setSizeConstraint(QLayout.SetFixedSize)
         self.grp_box_img_file_ops.setLayout(self.gridLayout_img_file_ops)
@@ -1120,6 +1147,37 @@ class PARI(QWidget):
         msg_box.setStandardButtons(QMessageBox.Ok)
         msg_box.exec_()
 
+    def update_img_filename(self):
+        self.lbl_img_fn_val.setText( self.input_img_prefix.text().strip()+\
+                                     self.input_img_suffix.text().strip()+".fits")
+
+    def handle_fits_filename(self):
+        # ================================================================================
+        #                       Handling existing fits filenames
+        # ================================================================================
+        prefix = self.input_img_prefix.text().strip()
+        suffix = self.input_img_suffix.text().strip()
+        directory = self.input_img_dir.text().strip().replace("\\","/")+"/"
+        
+        old_filename = prefix+str(suffix).zfill(len(suffix))+".fits"
+        filename = old_filename
+
+        suffix = suffix if suffix else ""
+
+        i = int(suffix)
+        flag = False
+
+        while os.path.exists(directory+filename):
+            i += 1
+            filename = prefix+str(i).zfill(len(suffix))+".fits"
+            flag = True
+
+        if flag:
+            self.log("Exposure: ",end="")
+            self.log(f'Using filename <span style="color:green">{filename}</span> \
+                    since <span style="color:red">{old_filename}</span> already exits!')
+            self.lbl_img_fn_val.setText(filename)
+        # ================================================================================
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
