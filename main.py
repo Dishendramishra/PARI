@@ -1006,6 +1006,11 @@ class PARI(QWidget):
         self.lbl_prl_logo.setPixmap(self.prl_logo)
         self.gridLayout_observation.addWidget(self.lbl_prl_logo, 5,0,1,2)
 
+        self.btn_about = QPushButton("About")
+        self.btn_about.setIcon(QIcon("resources/icons/about.png"))
+        self.gridLayout_observation.addWidget(self.btn_about, 6,1, Qt.AlignRight)
+        self.btn_about.clicked.connect(self.about_dialog)
+
         # self.gridLayout_observation.addWidget(self.dummy_txt,6,0,1,2)
 
         self.grp_box_observation.setLayout(self.gridLayout_observation)
@@ -1103,6 +1108,14 @@ class PARI(QWidget):
         
         # return max_num
         return (max_num.span(), max_num[0])   # index tuple, match
+
+    def about_dialog(self):
+        msg = "PARI"
+        msg_box = QMessageBox()
+        msg_box.setText(msg)
+        msg_box.setWindowTitle("About")
+        msg_box.setStandardButtons(QMessageBox.Ok)
+        msg_box.exec_()
 
 
 if __name__ == "__main__":
