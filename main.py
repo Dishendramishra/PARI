@@ -1127,7 +1127,11 @@ class PARI(QWidget):
     #     return (max_num.span(), max_num[0])   # index tuple, match
 
     def about_dialog(self):
-        msg = "PARI"
+        msg = """PARI (Paras Aquisition and Readout Initiation)
+is developed by Mr. Dishendra under the supervision
+of Prof. Abhijit and Mr. Neelam JSSV Prasad using the
+API provided by Astronomical Research Cameras, Inc."""
+
         msg_box = QMessageBox()
         msg_box.setText(msg)
         msg_box.setWindowTitle("About")
