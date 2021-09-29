@@ -882,6 +882,7 @@ class PARI(QWidget):
         self.gridLayout_exp.addWidget(self.chk_btn_open_shutter, 3, 0)
 
         self.lbl_readout_time = QLabel("Readout Time: ",self)
+        self.lbl_readout_time.setStyleSheet("color: #F92672; font: bold; font-size: 10pt")
         self.gridLayout_exp.addWidget(self.lbl_readout_time,4,0)
 
         self.btn_abort = QPushButton(self, text="ABORT")
