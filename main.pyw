@@ -335,38 +335,40 @@ class PARI(QWidget):
         # source_details = tess_api.get_obj_details(source_name)
         observers  = self.input_observers_name.toPlainText().strip().replace("\n","")
 
-        header = {
-            "OBS DATE": datetime.utcnow().strftime("%Y-%m-%d"),                     # Observation date                                
-            # "OBS AIRM": round(source_details["airmass"],2),                         # Airmass                                         
-            "OBS HANG": "hh:mm:ss.ss",                                              # Hour angle                                      
-            "TRG EPOC": "2000",  # to be verified                                   # Epoch of object coordinates                     
-            "OBS TSYS": "UTC",                                                      # Default time system                             
-            "OBS TIME": self.exp_start_time,                                        # Observation start time (Log) 
-            "OBS PPL ": observers,  # Observers
-            "OBS FILE": "",     # => needs to be updated by pipeline
-            "OBS MJD ": "",     # as of now leave                                    # Mid-Observation MJD                             
-            "OBS TYPE": self.exp_type_name.currentText().strip().lower(),           # Observation type                                
-            "INS LAMP": "",                                                         # Calibration lamp                                
-            "OBSERVAT": "Gurushikhar Mt.Abu",                                       #                                                    
-            "TELESCOP": "2.5M",                                                     # Telescope                                       
-            "INSTRUME": "PARAS2",                                                   # Instrument                                      
-            "FILTER1 ": "None",                                                     # Filter 1                                        
-            "FILTER2 ": "None",                                                     # Filter 2                                        
-            "OBS ELEV": "1765",                                                     # Observatory Altitude (meters)                   
-            "OBS LAT ": "24.6531",                                                  # Observatory Latitude (degrees)                  
-            "OBS LONG": "72.7794",                                                  # Observatory Longitude (hours)                   
-            "TRG NAME": self.target_name.text().strip(),                            # Target name
-            # "TRG ALPH": source_details["ra"],                                       # Target RA (hours)                               
-            # "TRG DELT": source_details["dec"],                                      # Target DEC (degrees)                            
-            "TRG PMRA": "",     # => needs to be updated by pipeline                # Target Proper Motion in RA (mas/yr)             
-            "TRG PMDE": "",     # => needs to be updated by pipeline                # Target Proper Motion in DEC (mas/yr)            
-            "TRG TYPE": "",     # => needs to be updated by pipeline                # Target Stellar Type
-            "CCD EXPT": self.input_exp_time.text().strip(),                         # Exposure time in seconds
-            "CCD GAIN": "2",                                                        # Gain in electrons/adu
-            "CCD RDNS": "4.50000",                                                  # Read-out noise
-        }   
-        # pprint(header)
-        fits_utilities.update_header(image_path, header)
+        data = fits.getdata(image_path)
+        hdu = fits.PrimaryHDU(data)
+        header = hdu.header
+
+        header["OBS_DATE"] = datetime.utcnow().strftime("%Y-%m-%d")  , "Observation date"
+        # header["OBS AIRM"] = round(source_details["airmass"],2)      , "Airmass"            
+        header["OBS_HANG"] = "hh:mm:ss.ss"                          , "Hour angle"
+        header["TRG_EPOC"] = "2000"                                 , "Epoch of object coordinates"
+        header["OBS_TSYS"] = "UTC"                                  , "Default time system"
+        header["OBS_TIME"] = self.exp_start_time                    , "Observation start time" 
+        header["OBS_PPL "] = observers                              , "Observers"
+        header["OBS_FILE"] = ""         # => needs to be updated by pipeline
+        header["OBS_MJD "] = ""                                     , "Mid-Observation MJD"
+        header["OBS_TYPE"] = self.exp_type_name.currentText().strip().lower() , "Observation type"                                
+        header["INS_LAMP"] = "UAr"                                  , "Calibration lamp"
+        header["OBSERVAT"] = "Gurushikhar Mt.Abu"                   , "Observatory Location"                                                                                           
+        header["TELESCOP"] = "2.5M"                                 , "Telescope"
+        header["INSTRUME"] = "PARAS2"                               , "Instrument"
+        header["FILTER1"]  = "None"                                 , "Filter 1"
+        header["FILTER2"]  = "None"                                 , "Filter 2"
+        header["OBS_ELEV"] = 1765                                   , "Observatory Altitude (meters)"
+        header["OBS_LAT "] = 24.6531                                , "Observatory Latitude (degrees)"
+        header["OBS_LONG"] = 72.7794                                , "Observatory Longitude (hours)"
+        header["TRG_NAME"] = self.target_name.text().strip()        ,  "Target name"
+        # header["TRG ALPH"] = source_details["ra"]                   , "Target RA (hours)"
+        # header["TRG DELT"] = source_details["dec"]                  , "Target DEC (degrees)"
+        header["TRG_PMRA"] = ""                                     , "Target Proper Motion in RA (mas/yr)"
+        header["TRG_PMDE"] = ""                                     , "Target Proper Motion in DEC (mas/yr)"
+        header["TRG_TYPE"] = ""                                     , "Target Stellar Type"
+        header["CCD EXPT"] = self.input_exp_time.text().strip()     , "Exposure time in seconds"
+        header["CCD_GAIN"] = 2                                      , "Gain in electrons/adu"
+        header["CCD_RDNS"] = 4.50000                                , "Read-out Noise"
+        
+        hdu.writeto( image_path, overwrite=1 )
 
         self.open_image(image_path)
         self.readout_time_flag = False
