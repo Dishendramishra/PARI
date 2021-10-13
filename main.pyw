@@ -142,6 +142,7 @@ class PARI(QWidget):
             4 : "AMP_ALL",
         }
 
+        self.ds9 = None
 
         self.setMinimumWidth(846)
         # ===============================================================================
@@ -654,10 +655,11 @@ class PARI(QWidget):
     #           DS9 Functions
     # ==============================================================
     def open_image(self, path):
-        path = path.replace("\\","/")
-        Popen(["./DS9/xpaset.exe", "-p", "ds9", "file", path], stdin=PIPE, stdout=PIPE, stderr=STDOUT)
-        Popen(["./DS9/xpaset.exe", "-p", "ds9", "zoom","to fit"], stdin=PIPE, stdout=PIPE, stderr=STDOUT)
-        Popen(["./DS9/xpaset.exe", "-p", "ds9", "zscale"], stdin=PIPE, stdout=PIPE, stderr=STDOUT)
+        if self.ds9:
+            path = path.replace("\\","/")
+            Popen(["./DS9/xpaset.exe", "-p", "ds9", "file", path], stdin=PIPE, stdout=PIPE, stderr=STDOUT)
+            Popen(["./DS9/xpaset.exe", "-p", "ds9", "zoom","to fit"], stdin=PIPE, stdout=PIPE, stderr=STDOUT)
+            Popen(["./DS9/xpaset.exe", "-p", "ds9", "zscale"], stdin=PIPE, stdout=PIPE, stderr=STDOUT)
 
     def ds9_process(self):
         self.xpans = Popen("./DS9/xpans.exe", stdin=PIPE, stdout=PIPE, stderr=STDOUT)
