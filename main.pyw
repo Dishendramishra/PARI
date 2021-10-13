@@ -128,6 +128,20 @@ class PARI(QWidget):
         "Star+ThAr"   :   "1800",
         "Star+Dark"   :   "1800"}
 
+        self.read_speeds = {
+            0 : "SLOW",
+            1 : "MED",
+            2 : "FAST",
+        }
+
+        self.output_sources = {
+            0 : "AMP_0",
+            1 : "AMP_1",
+            2 : "AMP_2",
+            3 : "AMP_3",
+            4 : "AMP_ALL",
+        }
+
 
         self.setMinimumWidth(846)
         # ===============================================================================
@@ -574,7 +588,7 @@ class PARI(QWidget):
             window.setLayout(layout)
             window.show()
 
-            window.exec_()
+            window.exec()
         
         else:
             self.log("Setup Controller:",end=" ")
@@ -595,11 +609,21 @@ class PARI(QWidget):
         ret = msgBox.exec_()    
         
         if ret == QMessageBox.Ok:
-            self.log("Controller Setup: ",end=" ")
             if self.arc.apply_setup(settings_dict):
+                self.log("Controller Setup: ",end=" ")
                 self.log("Error!","red")
             else:
+                self.log("Reset Controller: ",end=" ") 
                 self.log("Done!","green")
+                self.log("Loading tim file: ",end=" ") 
+                self.log("Done!","green")
+                self.log("Powering On Controller: ",end=" ") 
+                self.log("Done!","green")
+                self.log("Setting Output Source: ",end=" ")  
+                self.log(self.output_sources[settings_dict["QUAD"]],"green")
+                self.log("Setting Readout Speed: ",end=" ")  
+                self.log(self.read_speeds[settings_dict["READ_SPD"]],"green")
+                self.log("")
 
     def clear_array(self):
         self.log("Clear Camera Array: ",end=" ")
