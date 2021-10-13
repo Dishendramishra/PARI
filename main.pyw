@@ -364,7 +364,7 @@ class PARI(QWidget):
         header["TRG_PMRA"] = ""                                     , "Target Proper Motion in RA (mas/yr)"
         header["TRG_PMDE"] = ""                                     , "Target Proper Motion in DEC (mas/yr)"
         header["TRG_TYPE"] = ""                                     , "Target Stellar Type"
-        header["CCD EXPT"] = self.input_exp_time.text().strip()     , "Exposure time in seconds"
+        header["CCD_EXPT"] = self.input_exp_time.text().strip()     , "Exposure time in seconds"
         header["CCD_GAIN"] = 2                                      , "Gain in electrons/adu"
         header["CCD_RDNS"] = 4.50000                                , "Read-out Noise"
         
