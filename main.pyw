@@ -1,12 +1,14 @@
 from posixpath import basename
 from typing import Text
+
 from PySide2.QtWidgets import *
 from PySide2.QtCore import *
 from PySide2.QtGui import *
+
 from modules import tess_api
 from modules import simbad_api
 from subprocess import Popen, PIPE, STDOUT
-from time import perf_counter, sleep, time
+from time import perf_counter, sleep, time, strftime, strptime
 import os, re, glob
 from pathlib import Path
 from pprint import pprint
@@ -60,6 +62,132 @@ class WorkerSignals(QObject):
     result = Signal(object)
     progress = Signal(str)
 
+class ArcThread(QThread):
+    progress_output = Signal(int)
+    process_status = Signal(str)
+    log = Signal(str)
+
+    def __init__(self):
+        QThread.__init__(self)
+
+        self.arc = ArcWrapper()
+        self.exiting      = False
+        self.iterations   = 0
+        self.expose_delay = 0
+        self.shutter_sts  = 0
+        self.fitsname     = 0
+
+        self.readout_starttime = None
+
+    def __del__(self):
+        self.exiting = True
+        try:
+            self.wait()
+        except Exception as e:
+            print("wait(): "+str(e))
+
+    def initiate(self, expose_parameters):
+        self.expose_time  = expose_parameters["expose_time"]
+        self.expose_delay = expose_parameters["expose_delay"]
+        self.iterations   = expose_parameters["iterations"]
+        self.shutter_sts  = expose_parameters["shutter_sts"]
+        self.fitsname     = expose_parameters["fitsname"] 
+
+        self.start()
+
+    def do_fits_header_update(self):
+        self.log.emit("<span style='color:blue'>Updating Fits Header</span>")
+        for i in range(5):
+            sleep(0.2)
+            self.log.emit(".")    
+        self.log.emit("<span style='color:blue'>Done!</span>")
+
+    def run(self):
+        self.exiting = False
+
+        iteration = 0
+        file = open("log.txt","w")
+        while iteration < self.iterations and not self.exiting:
+            
+            iteration_starttime = time()
+            #   expose delay
+            start_time = time()
+            current = round(time()-start_time,2)
+            delay_flag = True
+            while delay_flag and not self.exiting:
+                self.process_status.emit("Waiting: {} secs".format(current))
+                current = round(time()-start_time,2)
+                sleep(0.01)
+                if current > self.expose_delay:
+                    break
+            
+            # # taking exposure
+            # start_time = time()
+            # current = round(time()-start_time,2)
+            # expose_flag = True
+            # while expose_flag and not self.exiting:
+            #     if current > self.expose_time:
+            #         expose_flag =  False
+            #     self.progress_output.emit(current/self.expose_time*100)
+            #     current = round(time()-start_time,2)
+            #     sleep(0.001)
+
+            self.arc.take_exposure(self.expose_time, self.shutter_sts, self.fitsname)
+            readout_starttime = time()            
+            
+            # ======================================================================
+            #                   Handling output from ArcAPI35Ex_1.exe
+            # ======================================================================
+            for line in self.arc.process.stdout:
+                line = line.decode("utf-8").strip()
+
+                if line.startswith("Err") or line.startswith("( CArcDevice"):
+
+                    if "Expose Aborted!" in line:
+                        self.log.emit("<span style='color:red'>Exposure Aborted !</span>")
+                        self.log.emit("<span style='color:red'>It is advised to Clear Camera Array.</span>")
+                    else:
+                        self.log.emit("<span style='color:red'>Exposure Error: {}</span>".format(line))
+
+                elif line.startswith("Elapsed Time"):
+                    self.process_status.emit("Elapsed Time: {}".format(line[line.find(":")+2:]))
+
+                elif line.startswith("Pixel Count:"):
+
+                    # if not self.readout_time_flag:
+                    #     self.readout_time_flag = True
+                    #     readout_starttime = time()
+                    
+                    self.process_status.emit("Readout Time: {}".format(round(time()-readout_starttime,2)))
+
+                    count = int(line[line.find(":")+2:])
+                    self.progress_output.emit(int(count/43400000*100))
+
+                elif line.startswith("Enter any key to"):
+                    self.arc.write_stdin("")
+                    self.log.emit("<span style='color:green'>Exposure Completed!</span>")
+                    self.do_fits_header_update()
+                    break
+                    
+                # in case of unexpected output
+                else:
+                    self.log.emit("<span style='color:red'>{}</span>".format(line))
+                    sleep(0.5)
+            # ======================================================================
+
+
+            # file.write("iteratio: {}, start_time: {}\n".format(iteration, iteration_starttime))
+            # print("iteratio: {}, start_time: {}".format(iteration, iteration_starttime))
+            iteration += 1
+
+
+        if self.exiting:
+            self.process_status.emit("<span style='color:red'>Aborted!</span>")
+            self.log.emit("<span style='color:red'>Exposure Aborted!</span>")
+        else:
+            self.process_status.emit("<span style='color:green'>Readout Done!</span>")
+        # file.close()
+        
 
 class Worker(QRunnable):
     '''
@@ -197,7 +325,14 @@ class PARI(QWidget):
 
         self.setLayout(self.main_layout)
         # self.logger_window()
-        self.show()
+        # self.show()
+
+        self.new_expose_thread = ArcThread()
+        self.new_expose_thread.progress_output.connect(self.update_expose_progress)
+        self.new_expose_thread.process_status.connect(self.update_expose_process)
+        self.new_expose_thread.log.connect(self.writelog)
+        self.new_expose_thread.finished.connect(self.finish_expose)
+
 
         self.shutter_thread_flag = True
         self.gps_flag = True
@@ -208,7 +343,7 @@ class PARI(QWidget):
         # self.spawn_thread(self.gps_thread, None, None)
         self.exp_start_time = None
 
-        self.arc = ArcWrapper()
+        # self.arc = ArcWrapper()
 
     def closeEvent(self, event):
         self.save_settings()
@@ -258,6 +393,41 @@ class PARI(QWidget):
 
     #  Exposure Functions
     # -----------------------------------------------------------
+
+    def start_expose(self):
+        self.btn_expose.setEnabled(False)
+        self.btn_abort.setEnabled(True)
+
+        expose_parameters = {
+            "expose_time"  : float(self.input_exp_time.text().strip()),
+            "expose_delay" : float(self.input_exp_delay.text().strip()),
+            "iterations"   : int(self.input_exp_multi.text()),
+            "shutter_sts"  : 1 if self.chk_btn_open_shutter.checkState() else 0 ,
+            "fitsname"     : self.input_img_dir.text().strip()+"/"+self.lbl_img_fn_val.text().strip()
+        }
+        self.new_expose_thread.initiate(expose_parameters)
+
+    def abort_expose(self):
+        with open("exposure.dat","w") as f:
+            f.write("1")
+            f.flush()
+
+        sleep(0.1)
+        self.new_expose_thread.exiting = True
+        sleep(0.1)
+
+    def finish_expose(self):
+        self.btn_expose.setEnabled(True)
+        self.btn_abort.setEnabled(False)
+
+    def update_expose_process(self, value):
+        self.lbl_readout_time.setText(value)
+
+    def update_expose_progress(self, value):
+        self.progressbar_exp.setValue(value)
+
+    def writelog(self, value):
+        self.txt_logger.textCursor().insertHtml(value)
 
     def expose_handler(self):
         try:
@@ -890,6 +1060,7 @@ class PARI(QWidget):
 
         self.chk_btn_exp_delay = QCheckBox("Delay Exposure(sec)", self)
         self.input_exp_delay = QLineEdit(self)
+        self.input_exp_delay.setText("0")
         self.input_exp_delay.setDisabled(True)
         self.chk_btn_exp_delay.clicked.connect(
             lambda: self.input_exp_delay.setDisabled(not self.chk_btn_exp_delay.isChecked()))
@@ -916,13 +1087,13 @@ class PARI(QWidget):
         self.btn_abort = QPushButton(self, text="ABORT")
         self.btn_abort.setStyleSheet("color: red; font: bold")
         self.gridLayout_exp.addWidget(self.btn_abort, 5, 0)
-        self.btn_abort.clicked.connect(self.abort_exposure)
+        self.btn_abort.clicked.connect(self.abort_expose)
         self.btn_abort.setEnabled(False)
 
         self.btn_expose = QPushButton(self, text="EXPOSE")
         self.btn_expose.setStyleSheet("color: blue; font: bold")
         self.gridLayout_exp.addWidget(self.btn_expose, 5, 1)
-        self.btn_expose.clicked.connect(self.expose_handler)
+        self.btn_expose.clicked.connect(self.start_expose)
 
         self.progressbar_exp = QProgressBar()
         self.progressbar_exp.setMinimum(0)
