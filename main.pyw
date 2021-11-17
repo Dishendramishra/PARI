@@ -1,5 +1,6 @@
 from posixpath import basename
 from typing import Text
+from PySide2 import QtGui
 
 from PySide2.QtWidgets import *
 from PySide2.QtCore import *
@@ -41,6 +42,8 @@ elif sys.platform == "win32":
 elif sys.platform == "darwin":
     pass
 
+ordinal = lambda n: "%d%s" % (n,"tsnrhtdd"[(n//10%10!=1)*(n%10<4)*n%10::4])
+
 class WorkerSignals(QObject):
     '''
     Defines the signals available from a running worker thread.
@@ -66,6 +69,7 @@ class ArcThread(QThread):
     progress_output = Signal(int)
     process_status = Signal(str)
     log = Signal(str)
+    fits_filename = Signal(str)
 
     def __init__(self):
         QThread.__init__(self)
@@ -78,29 +82,77 @@ class ArcThread(QThread):
         self.fitsname     = 0
 
         self.readout_starttime = None
+        self.exp_start_time = None
 
     def __del__(self):
+        self.arc.kill()
+        sleep(0.1)
         self.exiting = True
         try:
             self.wait()
         except Exception as e:
             print("wait(): "+str(e))
 
-    def initiate(self, expose_parameters):
+    def initiate(self, expose_parameters, fits_header):
         self.expose_time  = expose_parameters["expose_time"]
         self.expose_delay = expose_parameters["expose_delay"]
         self.iterations   = expose_parameters["iterations"]
         self.shutter_sts  = expose_parameters["shutter_sts"]
-        self.fitsname     = expose_parameters["fitsname"] 
+        self.fitsname     = expose_parameters["fitsname"]
+
+        self.observers    = fits_header["observers"]
+        self.obs_type     = fits_header["OBS_TYPE"]
+        self.target_name  = fits_header["TRG_NAME"]
 
         self.start()
 
     def do_fits_header_update(self):
-        self.log.emit("<span style='color:blue'>Updating Fits Header</span>")
-        for i in range(5):
-            sleep(0.2)
-            self.log.emit(".")    
-        self.log.emit("<span style='color:blue'>Done!</span>")
+        if self.exiting:
+            print("not saving fits file: aborted! ")
+            return 
+
+        self.log.emit("Saving Fits file: <span style='color:green'>{}</span><br>".format(self.fitsname))
+        self.log.emit("<span style='color:black'>Updating Fits Header:</span>")
+        # for i in range(5):
+        #     sleep(0.2)
+        #     self.log.emit(".")
+
+        data = fits.getdata(self.fitsname)
+        hdu = fits.PrimaryHDU(data)
+        header = hdu.header
+
+        header["OBS_DATE"] = datetime.utcnow().strftime("%Y-%m-%d")  , "Observation date"
+        # header["OBS AIRM"] = round(source_details["airmass"],2)      , "Airmass"            
+        header["OBS_HANG"] = "hh:mm:ss.ss"                          , "Hour angle"
+        header["TRG_EPOC"] = "2000"                                 , "Epoch of object coordinates"
+        header["OBS_TSYS"] = "UTC"                                  , "Default time system"
+        header["OBS_TIME"] = self.exp_start_time                    , "Observation start time" 
+        header["OBS_PPL "] = self.observers                         , "Observers"
+        header["OBS_FILE"] = ""         # => needs to be updated by pipeline
+        header["OBS_MJD "] = ""                                     , "Mid-Observation MJD"
+        header["OBS_TYPE"] = self.obs_type                          , "Observation type"
+        header["INS_LAMP"] = "UAr"                                  , "Calibration lamp"
+        header["OBSERVAT"] = "Gurushikhar Mt.Abu"                   , "Observatory Location"                                                                                           
+        header["TELESCOP"] = "2.5M"                                 , "Telescope"
+        header["INSTRUME"] = "PARAS2"                               , "Instrument"
+        header["FILTER1"]  = "None"                                 , "Filter 1"
+        header["FILTER2"]  = "None"                                 , "Filter 2"
+        header["OBS_ELEV"] = 1765                                   , "Observatory Altitude (meters)"
+        header["OBS_LAT "] = 24.6531                                , "Observatory Latitude (degrees)"
+        header["OBS_LONG"] = 72.7794                                , "Observatory Longitude (hours)"
+        header["TRG_NAME"] = self.target_name                       ,  "Target name"
+        # header["TRG ALPH"] = source_details["ra"]                   , "Target RA (hours)"
+        # header["TRG DELT"] = source_details["dec"]                  , "Target DEC (degrees)"
+        header["TRG_PMRA"] = ""                                     , "Target Proper Motion in RA (mas/yr)"
+        header["TRG_PMDE"] = ""                                     , "Target Proper Motion in DEC (mas/yr)"
+        header["TRG_TYPE"] = ""                                     , "Target Stellar Type"
+        header["CCD_EXPT"] = self.expose_time                       , "Exposure time in seconds"
+        header["CCD_GAIN"] = 2                                      , "Gain in electrons/adu"
+        header["CCD_RDNS"] = 4.50000                                , "Read-out Noise"
+        
+        hdu.writeto(self.fitsname, overwrite=1)
+        sleep(0.1)
+        self.log.emit("<span style='color:green'> Done!</span><br><br>")
 
     def run(self):
         self.exiting = False
@@ -109,6 +161,7 @@ class ArcThread(QThread):
         file = open("log.txt","w")
         while iteration < self.iterations and not self.exiting:
             
+            self.log.emit("Exposure Number: <span style='color:blue'>{}</span><br>".format(ordinal(iteration+1)))
             iteration_starttime = time()
             #   expose delay
             start_time = time()
@@ -131,9 +184,11 @@ class ArcThread(QThread):
             #     self.progress_output.emit(current/self.expose_time*100)
             #     current = round(time()-start_time,2)
             #     sleep(0.001)
-
+            
+            self.readout_time_flag = False
             self.arc.take_exposure(self.expose_time, self.shutter_sts, self.fitsname)
-            readout_starttime = time()            
+            self.exp_start_time = datetime.utcnow().strftime("%H:%M:%S")
+            readout_starttime = time()        
             
             # ======================================================================
             #                   Handling output from ArcAPI35Ex_1.exe
@@ -144,19 +199,19 @@ class ArcThread(QThread):
                 if line.startswith("Err") or line.startswith("( CArcDevice"):
 
                     if "Expose Aborted!" in line:
-                        self.log.emit("<span style='color:red'>Exposure Aborted !</span>")
-                        self.log.emit("<span style='color:red'>It is advised to Clear Camera Array.</span>")
+                        self.log.emit("<span style='color:red'>Exposure Aborted !</span><br>")
+                        self.log.emit("<span style='color:red'>It is advised to Clear Camera Array.</span><br><br>")
                     else:
-                        self.log.emit("<span style='color:red'>Exposure Error: {}</span>".format(line))
+                        self.log.emit("<span style='color:red'>Exposure Error: {}</span><br>".format(line))
 
                 elif line.startswith("Elapsed Time"):
                     self.process_status.emit("Elapsed Time: {}".format(line[line.find(":")+2:]))
 
                 elif line.startswith("Pixel Count:"):
 
-                    # if not self.readout_time_flag:
-                    #     self.readout_time_flag = True
-                    #     readout_starttime = time()
+                    if not self.readout_time_flag:
+                        self.readout_time_flag = True
+                        readout_starttime = time()
                     
                     self.process_status.emit("Readout Time: {}".format(round(time()-readout_starttime,2)))
 
@@ -165,27 +220,30 @@ class ArcThread(QThread):
 
                 elif line.startswith("Enter any key to"):
                     self.arc.write_stdin("")
-                    self.log.emit("<span style='color:green'>Exposure Completed!</span>")
+                    self.log.emit("<span style='color:green;font-weight:bold'>Exposure Completed!</span><br>")
                     self.do_fits_header_update()
                     break
                     
                 # in case of unexpected output
                 else:
-                    self.log.emit("<span style='color:red'>{}</span>".format(line))
-                    sleep(0.5)
+                    # self.log.emit("<span style='color:blue'>{}</span><br>".format(line))
+                    print(line)
+                    # sleep(0.5)
             # ======================================================================
 
 
             # file.write("iteratio: {}, start_time: {}\n".format(iteration, iteration_starttime))
             # print("iteratio: {}, start_time: {}".format(iteration, iteration_starttime))
             iteration += 1
-
+            self.fits_filename.emit(self.fitsname)
+            sleep(0.1)
 
         if self.exiting:
             self.process_status.emit("<span style='color:red'>Aborted!</span>")
-            self.log.emit("<span style='color:red'>Exposure Aborted!</span>")
+            self.log.emit("<span style='color:red'>Exposure Aborted!</span><br><br>")
         else:
             self.process_status.emit("<span style='color:green'>Readout Done!</span>")
+
         # file.close()
         
 
@@ -331,6 +389,7 @@ class PARI(QWidget):
         self.new_expose_thread.progress_output.connect(self.update_expose_progress)
         self.new_expose_thread.process_status.connect(self.update_expose_process)
         self.new_expose_thread.log.connect(self.writelog)
+        self.new_expose_thread.fits_filename.connect(self.update_fitsfile_name)
         self.new_expose_thread.finished.connect(self.finish_expose)
 
 
@@ -348,11 +407,11 @@ class PARI(QWidget):
     def closeEvent(self, event):
         self.save_settings()
         self.ds9_kill()
-        try:
-            self.arc.kill()
-            print("ARCAPI: closed!")
-        except:
-            print("ARCAPI: error closing!")
+        # try:
+        #     self.arc.kill()
+        #     print("ARCAPI: closed!")
+        # except:
+        #     print("ARCAPI: error closing!")
 
         self.shutter_thread_flag = False
         self.gps_flag = False
@@ -395,6 +454,12 @@ class PARI(QWidget):
     # -----------------------------------------------------------
 
     def start_expose(self):
+
+        try:
+            os.remove("exposure.dat")
+        except:
+            pass
+
         self.btn_expose.setEnabled(False)
         self.btn_abort.setEnabled(True)
 
@@ -405,7 +470,13 @@ class PARI(QWidget):
             "shutter_sts"  : 1 if self.chk_btn_open_shutter.checkState() else 0 ,
             "fitsname"     : self.input_img_dir.text().strip()+"/"+self.lbl_img_fn_val.text().strip()
         }
-        self.new_expose_thread.initiate(expose_parameters)
+
+        fits_header = {
+            "observers" : self.input_observers_name.toPlainText().strip().replace("\n",""), 
+            "OBS_TYPE"  : self.exp_type_name.currentText().strip().lower(),
+            "TRG_NAME"  : self.target_name.text().strip()
+        }
+        self.new_expose_thread.initiate(expose_parameters, fits_header)
 
     def abort_expose(self):
         with open("exposure.dat","w") as f:
@@ -427,7 +498,24 @@ class PARI(QWidget):
         self.progressbar_exp.setValue(value)
 
     def writelog(self, value):
+        self.txt_logger.moveCursor(QtGui.QTextCursor.End)
         self.txt_logger.textCursor().insertHtml(value)
+        self.txt_logger.moveCursor(QtGui.QTextCursor.End)
+
+    def update_fitsfile_name(self, value):
+        prefix = self.input_img_prefix.text().strip()
+        directory = self.input_img_dir.text().strip().replace("\\","/")+"/"
+        
+        #  Incrementing Suffix By 1
+        suffix     = self.input_img_suffix.text().strip()
+        suffix_len = len(suffix)
+        suffix     = str(int(suffix)+1).zfill(suffix_len)
+        self.input_img_suffix.setText(suffix)
+
+        filename = directory+prefix+str(suffix).zfill(len(suffix))+".fits"
+        print("update_fitsfile_name(): ",filename)
+        self.new_expose_thread.fitsname =  filename
+
 
     def expose_handler(self):
         try:
@@ -533,7 +621,7 @@ class PARI(QWidget):
         header["OBS_PPL "] = observers                              , "Observers"
         header["OBS_FILE"] = ""         # => needs to be updated by pipeline
         header["OBS_MJD "] = ""                                     , "Mid-Observation MJD"
-        header["OBS_TYPE"] = self.exp_type_name.currentText().strip().lower() , "Observation type"                                
+        header["OBS_TYPE"] = self.exp_type_name.currentText().strip().lower() , "Observation type"
         header["INS_LAMP"] = "UAr"                                  , "Calibration lamp"
         header["OBSERVAT"] = "Gurushikhar Mt.Abu"                   , "Observatory Location"                                                                                           
         header["TELESCOP"] = "2.5M"                                 , "Telescope"
@@ -566,32 +654,44 @@ class PARI(QWidget):
     # -----------------------------------------------------------
 
     def power_off_controller(self):
+        arc = ArcWrapper()
         self.log("Power Off Controller: ",end=" ")
-        if self.arc.poweroff():
+        if arc.poweroff():
             self.log("Error!","red")
         else:
             self.log("Done!","green")
+        arc.kill()
+        sleep(0.1)
 
     def power_on_controller(self):
         self.log("Power On Controller: ",end=" ")
-        if self.arc.poweron():
+        arc = ArcWrapper()
+        if arc.poweron():
             self.log("Error!","red")
         else:
             self.log("Done!","green")
+        arc.kill()
+        sleep(0.1)
 
     def open_shutter(self):
         self.log("Opening Shutter: ",end=" ")
-        if self.arc.open_shutter():
+        arc = ArcWrapper()
+        if arc.open_shutter():
             self.log("Error!","red")
         else:
             self.log("Done!","green")
+        arc.kill()
+        sleep(0.1)
 
     def close_shutter(self):
         self.log("Closing Shutter: ",end=" ")
-        if self.arc.close_shutter():
+        arc = ArcWrapper()
+        if arc.close_shutter():
             self.log("Error!","red")
         else:
             self.log("Done!","green")
+        arc.kill()
+        sleep(0.1)
         
     def setup_dialog(self):
 
@@ -768,6 +868,8 @@ class PARI(QWidget):
 
     def setup(self, settings_dict):
         
+        arc = ArcWrapper()
+
         with open("setup.ini","w") as f:          # saving setup contoller settings
             f.write(json.dumps(settings_dict))
 
@@ -780,7 +882,7 @@ class PARI(QWidget):
         ret = msgBox.exec_()    
         
         if ret == QMessageBox.Ok:
-            if self.arc.apply_setup(settings_dict):
+            if arc.apply_setup(settings_dict):
                 self.log("Controller Setup: ",end=" ")
                 self.log("Error!","red")
             else:
@@ -796,19 +898,28 @@ class PARI(QWidget):
                 self.log(self.read_speeds[settings_dict["READ_SPD"]],"green")
                 self.log("")
 
+            arc.kill()
+            sleep(0.1)
+
     def clear_array(self):
+        arc = ArcWrapper()
         self.log("Clear Camera Array: ",end=" ")
-        if self.arc.clear_camera_array():
+        if arc.clear_camera_array():
             self.log("Error!","red")
         else:
             self.log("Done!","green")
+        arc.kill()
+        sleep(0.1)
 
     def reset_controller(self):
+        arc = ArcWrapper()
         self.log("Resetting Controller: ",end=" ")
-        if self.arc.reset_controller():
+        if arc.reset_controller():
             self.log("Error!","red")
         else:
             self.log("Done!","green")
+        arc.kill()
+        sleep(0.1)
             
     def abort_exposure(self):
         self.btn_abort.setDisabled(True)
