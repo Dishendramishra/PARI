@@ -98,6 +98,7 @@ class ArcThread(QThread):
         self.expose_delay = expose_parameters["expose_delay"]
         self.iterations   = expose_parameters["iterations"]
         self.shutter_sts  = expose_parameters["shutter_sts"]
+        self.output_dir   = expose_parameters["output_dir"]
         self.fitsname     = expose_parameters["fitsname"]
 
         self.observers    = fits_header["observers"]
@@ -107,17 +108,13 @@ class ArcThread(QThread):
         self.start()
 
     def do_fits_header_update(self):
-        if self.exiting:
-            print("not saving fits file: aborted! ")
-            return 
-
         self.log.emit("Saving Fits file: <span style='color:green'>{}</span><br>".format(self.fitsname))
         self.log.emit("<span style='color:black'>Updating Fits Header:</span>")
         # for i in range(5):
         #     sleep(0.2)
         #     self.log.emit(".")
 
-        data = fits.getdata(self.fitsname)
+        data = fits.getdata(self.output_dir+self.fitsname)
         hdu = fits.PrimaryHDU(data)
         header = hdu.header
 
@@ -150,9 +147,22 @@ class ArcThread(QThread):
         header["CCD_GAIN"] = 2                                      , "Gain in electrons/adu"
         header["CCD_RDNS"] = 4.50000                                , "Read-out Noise"
         
-        hdu.writeto(self.fitsname, overwrite=1)
-        sleep(0.1)
-        self.log.emit("<span style='color:green'> Done!</span><br><br>")
+        if self.exiting:
+            self.log.emit("<span style='color:red'> Aborted!</span><br><br>")
+        else:
+            hdu.writeto(self.output_dir+self.fitsname, overwrite=1)
+            sleep(0.1)
+            self.log.emit("<span style='color:green'> Done!</span><br><br>")
+
+            # =================================================
+            #               replace with dynamic
+            # =================================================
+            target_index = self.fitsname.find(".fits")
+            suffix = str(int(self.fitsname[target_index-4:target_index])+1).zfill(4)
+            self.fitsname = self.fitsname[:-9]+suffix+".fits"
+            
+            self.fits_filename.emit(suffix)
+            ## =================================================
 
     def run(self):
         self.exiting = False
@@ -186,7 +196,7 @@ class ArcThread(QThread):
             #     sleep(0.001)
             
             self.readout_time_flag = False
-            self.arc.take_exposure(self.expose_time, self.shutter_sts, self.fitsname)
+            self.arc.take_exposure(self.expose_time, self.shutter_sts, self.output_dir+self.fitsname)
             self.exp_start_time = datetime.utcnow().strftime("%H:%M:%S")
             readout_starttime = time()        
             
@@ -235,7 +245,6 @@ class ArcThread(QThread):
             # file.write("iteratio: {}, start_time: {}\n".format(iteration, iteration_starttime))
             # print("iteratio: {}, start_time: {}".format(iteration, iteration_starttime))
             iteration += 1
-            self.fits_filename.emit(self.fitsname)
             sleep(0.1)
 
         if self.exiting:
@@ -468,7 +477,8 @@ class PARI(QWidget):
             "expose_delay" : float(self.input_exp_delay.text().strip()),
             "iterations"   : int(self.input_exp_multi.text()),
             "shutter_sts"  : 1 if self.chk_btn_open_shutter.checkState() else 0 ,
-            "fitsname"     : self.input_img_dir.text().strip()+"/"+self.lbl_img_fn_val.text().strip()
+            "fitsname"     : self.lbl_img_fn_val.text().strip(),
+            "output_dir"   : self.input_img_dir.text().strip()+"/"
         }
 
         fits_header = {
@@ -503,19 +513,9 @@ class PARI(QWidget):
         self.txt_logger.moveCursor(QtGui.QTextCursor.End)
 
     def update_fitsfile_name(self, value):
-        prefix = self.input_img_prefix.text().strip()
-        directory = self.input_img_dir.text().strip().replace("\\","/")+"/"
-        
-        #  Incrementing Suffix By 1
-        suffix     = self.input_img_suffix.text().strip()
-        suffix_len = len(suffix)
-        suffix     = str(int(suffix)+1).zfill(suffix_len)
-        self.input_img_suffix.setText(suffix)
-
-        filename = directory+prefix+str(suffix).zfill(len(suffix))+".fits"
-        print("update_fitsfile_name(): ",filename)
-        self.new_expose_thread.fitsname =  filename
-
+        #  value: is incremented suffix from the thread         
+        self.input_img_suffix.setText(value)
+        self.update_img_filename()
 
     def expose_handler(self):
         try:
@@ -1310,7 +1310,7 @@ class PARI(QWidget):
 
         self.exp_type_lbl = QLabel(self, text="Exposure Type:")
         self.exp_type_name = QComboBox(self)
-        self.exp_type_name.addItems(["Dark","Dark+Tung","Tung+Dark","UAr+UAr","Dark+UAr","ThAr+ThAr","Dark+ThAr","Star+UAr","Star+ThAr","Star+Dark"])
+        self.exp_type_name.addItems(["Dark","Dark+Tung", "Tung+Dark","UAr+UAr", "UAr+Dark","Dark+UAr","ThAr+ThAr","Dark+ThAr","Star+UAr","Star+ThAr","Star+Dark"])
         # self.exp_type_name.currentTextChanged.connect(lambda: self.input_exp_time.setText(self.EXP_TIMES[self.exp_type_name.currentText()]))
         self.input_exp_time.setText(self.EXP_TIMES[self.exp_type_name.currentText()])
         self.gridLayout_observation.addWidget(self.exp_type_lbl, 1, 0)
