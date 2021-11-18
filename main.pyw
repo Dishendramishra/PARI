@@ -1,6 +1,7 @@
 from posixpath import basename
 from typing import Text
 from PySide2 import QtGui
+from PySide2 import QtCore
 
 from PySide2.QtWidgets import *
 from PySide2.QtCore import *
@@ -1439,11 +1440,12 @@ class PARI(QWidget):
 
     def about_dialog(self):
         msg = """PARI (Paras Aquisition and Readout Initiation)
-is developed by Mr. Dishendra under the supervision
+is developed by Mr. <a href="https://in.linkedin.com/in/dishendra-b431b514b">Dishendra</a> under the supervision
 of Prof. Abhijit and Mr. Neelam JSSV Prasad using the
 API provided by Astronomical Research Cameras, Inc."""
 
         msg_box = QMessageBox()
+        msg_box.setTextFormat(QtCore.Qt.RichText)
         msg_box.setText(msg)
         msg_box.setWindowTitle("About")
         msg_box.setStandardButtons(QMessageBox.Ok)
