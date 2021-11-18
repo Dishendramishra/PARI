@@ -71,6 +71,7 @@ class ArcThread(QThread):
     process_status = Signal(str)
     log = Signal(str)
     fits_filename = Signal(str)
+    exposure_complete = Signal(str)
 
     def __init__(self):
         QThread.__init__(self)
@@ -109,6 +110,10 @@ class ArcThread(QThread):
         self.start()
 
     def do_fits_header_update(self):
+        if self.exiting:
+            # self.log.emit("<span style='color:red'> Aborted!</span><br><br>")
+            return
+
         self.log.emit("Saving Fits file: <span style='color:green'>{}</span><br>".format(self.fitsname))
         self.log.emit("<span style='color:black'>Updating Fits Header:</span>")
         # for i in range(5):
@@ -148,22 +153,19 @@ class ArcThread(QThread):
         header["CCD_GAIN"] = 2                                      , "Gain in electrons/adu"
         header["CCD_RDNS"] = 4.50000                                , "Read-out Noise"
         
-        if self.exiting:
-            self.log.emit("<span style='color:red'> Aborted!</span><br><br>")
-        else:
-            hdu.writeto(self.output_dir+self.fitsname, overwrite=1)
-            sleep(0.1)
-            self.log.emit("<span style='color:green'> Done!</span><br><br>")
+        hdu.writeto(self.output_dir+self.fitsname, overwrite=1)
+        sleep(0.1)
+        self.log.emit("<span style='color:green'> Done!</span><br><br>")
 
-            # =================================================
-            #               replace with dynamic
-            # =================================================
-            target_index = self.fitsname.find(".fits")
-            suffix = str(int(self.fitsname[target_index-4:target_index])+1).zfill(4)
-            self.fitsname = self.fitsname[:-9]+suffix+".fits"
-            
-            self.fits_filename.emit(suffix)
-            ## =================================================
+        # =================================================
+        #               replace with dynamic
+        # =================================================
+        target_index = self.fitsname.find(".fits")
+        suffix = str(int(self.fitsname[target_index-4:target_index])+1).zfill(4)
+        self.fitsname = self.fitsname[:-9]+suffix+".fits"
+        
+        self.fits_filename.emit(suffix)
+        ## =================================================
 
     def run(self):
         self.exiting = False
@@ -171,6 +173,8 @@ class ArcThread(QThread):
         iteration = 0
         file = open("log.txt","w")
         while iteration < self.iterations and not self.exiting:
+
+            self.exposure_complete.emit("done")
             
             self.log.emit("Exposure Number: <span style='color:blue'>{}</span><br>".format(ordinal(iteration+1)))
             iteration_starttime = time()
@@ -212,6 +216,7 @@ class ArcThread(QThread):
                     if "Expose Aborted!" in line:
                         self.log.emit("<span style='color:red'>Exposure Aborted !</span><br>")
                         self.log.emit("<span style='color:red'>It is advised to Clear Camera Array.</span><br><br>")
+                        self.exiting = True
                     else:
                         self.log.emit("<span style='color:red'>Exposure Error: {}</span><br>".format(line))
 
@@ -231,7 +236,6 @@ class ArcThread(QThread):
 
                 elif line.startswith("Enter any key to"):
                     self.arc.write_stdin("")
-                    self.log.emit("<span style='color:green;font-weight:bold'>Exposure Completed!</span><br>")
                     self.do_fits_header_update()
                     break
                     
@@ -250,7 +254,6 @@ class ArcThread(QThread):
 
         if self.exiting:
             self.process_status.emit("<span style='color:red'>Aborted!</span>")
-            self.log.emit("<span style='color:red'>Exposure Aborted!</span><br><br>")
         else:
             self.process_status.emit("<span style='color:green'>Readout Done!</span>")
 
@@ -400,7 +403,9 @@ class PARI(QWidget):
         self.new_expose_thread.process_status.connect(self.update_expose_process)
         self.new_expose_thread.log.connect(self.writelog)
         self.new_expose_thread.fits_filename.connect(self.update_fitsfile_name)
+        self.new_expose_thread.exposure_complete.connect(self.reset_progressbar)
         self.new_expose_thread.finished.connect(self.finish_expose)
+
 
 
         self.shutter_thread_flag = True
@@ -473,10 +478,18 @@ class PARI(QWidget):
         self.btn_expose.setEnabled(False)
         self.btn_abort.setEnabled(True)
 
+        if self.chk_btn_exp_multi.checkState():
+            iterations = int(self.input_exp_multi.text())
+            if iterations == 0:
+                self.writelog("Setting <b>Multi Exposure</b> to 1<br>")
+                iterations = 1
+        else:
+            iterations = 1
+
         expose_parameters = {
             "expose_time"  : float(self.input_exp_time.text().strip()),
             "expose_delay" : float(self.input_exp_delay.text().strip()),
-            "iterations"   : int(self.input_exp_multi.text()),
+            "iterations"   : iterations,
             "shutter_sts"  : 1 if self.chk_btn_open_shutter.checkState() else 0 ,
             "fitsname"     : self.lbl_img_fn_val.text().strip(),
             "output_dir"   : self.input_img_dir.text().strip()+"/"
@@ -497,6 +510,8 @@ class PARI(QWidget):
         sleep(0.1)
         self.new_expose_thread.exiting = True
         sleep(0.1)
+        self.btn_expose.setEnabled(True)
+        self.btn_abort.setEnabled(False)
 
     def finish_expose(self):
         self.btn_expose.setEnabled(True)
@@ -517,6 +532,9 @@ class PARI(QWidget):
         #  value: is incremented suffix from the thread         
         self.input_img_suffix.setText(value)
         self.update_img_filename()
+
+    def reset_progressbar(self, value):
+        self.progressbar_exp.reset()
 
     def expose_handler(self):
         try:
@@ -1442,7 +1460,7 @@ class PARI(QWidget):
         msg = """PARI (Paras Aquisition and Readout Initiation)
 is developed by Mr. <a href="https://in.linkedin.com/in/dishendra-b431b514b">Dishendra</a> under the supervision
 of Prof. Abhijit and Mr. Neelam JSSV Prasad using the
-API provided by Astronomical Research Cameras, Inc."""
+API provided by Astronomical Research Cameras, Inc. We acknowledge the help provided by Robert W. Leach, Astronomical Research Cameras, Inc."""
 
         msg_box = QMessageBox()
         msg_box.setTextFormat(QtCore.Qt.RichText)
