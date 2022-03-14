@@ -1,25 +1,2 @@
-## ToDo
-
-**Things to add in `main.py`:**
-
-1. setup button which will upload `tim.lod` file only
-2. update header of fits file after exposure
-3. auto increment file name
-4. automate all calibrations (by: Arvind)
-
-
-
-
-
-## HJD, BJD
-
-Either start or mid time of the exposure
-
-
-
-
-
-## AIRMASS
-
-get from telescope
+![notes](https://user-images.githubusercontent.com/6905938/158103630-9f3c8d44-37bb-4700-a5b4-d0db5395fff6.png)
 
