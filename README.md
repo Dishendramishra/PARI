@@ -1,25 +1,5 @@
-## ToDo
+![notes](https://user-images.githubusercontent.com/6905938/158103630-9f3c8d44-37bb-4700-a5b4-d0db5395fff6.png)
 
-**Things to add in `main.py`:**
+Software is developed using QThread. (For an quick tutorial on QThread https://www.youtube.com/watch?v=k5tIk7w50L4).
 
-1. setup button which will upload `tim.lod` file only
-2. update header of fits file after exposure
-3. auto increment file name
-4. automate all calibrations (by: Arvind)
-
-
-
-
-
-## HJD, BJD
-
-Either start or mid time of the exposure
-
-
-
-
-
-## AIRMASS
-
-get from telescope
-
+Source code of ARCAPI https://github.com/Dishendramishra/ARCAPI
