@@ -10,7 +10,31 @@
 ### **Design Flow**
 ![pari](https://user-images.githubusercontent.com/6905938/158754492-74e4fb53-9d1a-41e4-8857-636cad87c3d2.png)
 
+---
 
+## System Configurations: :warning:
+
+
+
+### Installing pip
+
+If you don't have pip installed, use the file `get-pip.py` in this repo to install pip.
+
+```shell
+python get-pip.py
+```
+
+
+
+### Installing PARI
+
+Use the file `install.py` in this repo to install the software. Make sure that you have pip installed, before executing the command below .
+
+```shell
+python install.py
+```
+
+---
 
 ### **Development Resources:**
 
