@@ -6,3 +6,6 @@ bs4
 colorama
 termcolor
 julian
+pyserial
+pynmea2
+winshell
